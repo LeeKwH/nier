@@ -1,0 +1,27 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.18.2",
+    "forever": "^4.0.3",
+    "iconv-lite": "^0.6.3",
+    "jsonwebtoken": "^9.0.0",
+    "nodemon": "^2.0.20",
+    "pg": "^8.8.0",
+    "python-shell": "^5.0.0"
+  },
+  "scripts": {
+    "start": "yarn nodemon --watch \"./server.js\" --exec \"node server.js\"",
+    "forever_start": "yarn forever -m=10000 --minUpTime=1000 --spinSleepTime=1000 start server.js",
+    "stop-server": "forever stopall",
+    "forever_restart": "forever restartall",
+    "forever_list": "forever list",
+    "jupyter_start": "yarn forever -m=10000 --minUpTime=1000 --spinSleepTime=1000 start -c \"python -m notebook --NotebookApp.token='' --NotebookApp.password='' --config=jupyter_server_config.py --port=8889\" ./",
+    "tensor_start": "yarn forever -m=10000 --minUpTime=1000 --spinSleepTime=1000 start -c \"tensorboard --help\" ./",
+    "up": "yarn forever_start && yarn jupyter_start && yarn tensor_start",
+    "up_dev": "yarn forever_start && yarn jupyter_start"
+  }
+}

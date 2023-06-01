@@ -1,0 +1,23 @@
+=============[03_MODEL_TOOLS]====================
+1. make_model.py
+	1) user_name
+	2) model_name
+	3) list_cols
+	4) list_mers
+
+2. raise_error.py
+	1) user_name
+	2) model_name
+	3) input_info ::(example) input_info = [[100,15,8,9],[100,3,5],[100,7]]
+
+3. visualize_model.py
+	1) user_name
+	2) model_name
+	3) input_info
+
+=============[04_TRAINING_TOOLS]====================
+1. training.py
+	1) user_name
+	2) model_name
+	3) input_info
+	4) learning_configure(작성중)

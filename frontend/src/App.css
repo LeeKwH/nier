@@ -1,0 +1,490 @@
+/* font */
+
+@font-face {
+    font-family: "Basic";
+    src: url(./fonts/NanumSquareR.ttf);
+}
+
+@font-face {
+    font-family: "BasicB";
+    src: url(./fonts/NanumSquareB.ttf);
+}
+
+@font-face {
+    font-family: "BasicEB";
+    src: url(./fonts/NanumSquareEB.ttf);
+}
+
+.navbar .container{
+    max-width: 95vw;
+}
+
+.side-menu:hover{
+    /* background-color: #20252a; */
+    color: rgb(255, 255, 255);
+    transition: 0.5s;
+    
+}
+
+.head-div i:hover{
+    color: rgb(255, 255, 255);
+    transition: 0.5s;
+
+}
+
+.nav-user{
+    display: flex;
+    align-items: center;
+}
+
+.nav-user-icon{
+    background: transparent;
+    background-color: #62686d;
+    border-radius: 50%;
+    text-align: center;
+    /* line-height: 100px; */
+    vertical-align: middle;
+    padding: 2px;
+    padding-top: 5px;
+}
+
+.fZichJ.active{
+    background: #20252a !important;
+    color: white !important;
+    transition: 0.5s;
+}
+.fZichJ.active i{
+    color: #00acac !important;
+    transition: 0.5s;
+}
+
+.Head-title{
+    font-family: 'BasicEB';
+}
+
+.signin-btn{
+    background-color: #00acac !important;
+}
+.signin-btn:hover{
+    background-color: #008181 !important;
+}
+
+.loginpage{
+    display: flex;
+}
+
+.login-img-wrap{
+    width: 80vw;
+    height: 100vh;
+}
+.login-img{
+    width: 100%;
+    height: 100%;
+    background-image: url(../public/img/login_img.jpg);
+    background-size: cover;
+    position: relative;
+    display : inline-block;
+    max-width: 100%;
+    background-repeat :no-repeat;
+}
+.login-header{
+    position: absolute;
+    bottom: 3rem;
+    left: 3rem;
+    /* transform: translate( -50%, -50%); */
+    color: azure;
+    
+}
+.login-header b{
+    font-family: "BasicEB";
+    font-size: 3rem;
+}
+.login-header span{
+    font-family: "Basic";
+    font-size: 2.5rem;
+}
+
+.login-form{
+    width: 20vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.mb-3{
+    width: 70%;
+}
+
+
+/* Engine Page */
+.under-right{
+    width: 100%;
+    height: 95vh;
+    font-family: "Basic";
+    display: flex;
+    background-color: #f9fafc;
+    /* flex-direction: column; */
+}
+.under-right h4{
+    font-family: "BasicEB";
+    margin : 0.5rem;
+}
+.project-tab {
+    /* all: unset !important; */
+    width: 100%;
+}
+
+
+.project-tab .nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active {
+    color: #8c9094;
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid !important;
+    font-size: 16px;
+    font-weight: bold;
+}
+.project-tab .nav-link {
+    border: none;
+    color: #8c9094;
+    font-size: 16px;
+    font-weight: 600;
+}
+.project-tab .nav-link:hover {
+    color: #333;
+    border: none;
+}
+.project-tab .nav-link:active {
+    border: none;
+}
+.project-tab thead{
+    background: #f3f3f3;
+    color: #333;
+}
+.project-tab a{
+    text-decoration: none;
+    color: #333;
+    font-weight: 600;
+}
+.tab-content {
+    flex:1;
+    width: 100%;
+}
+.tab-content .fade{
+    height: 100%;
+}
+
+
+.nav-bar{
+    background-color: rgb(17, 24, 39) !important;
+}
+
+.MuiDrawer-paper{
+    height: 100%;
+    background-color: rgb(17, 24, 39) !important;
+    color: #9ca3af !important;
+}
+.MuiDrawer-paper span{
+    font-weight: 600;
+    
+}
+.MuiSvgIcon-root{
+    color: #9ca3af;
+}
+
+.MuiDrawer-paper .Mui-selected{
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #10b981;
+}
+.MuiDrawer-paper .Mui-selected .MuiSvgIcon-root{
+    color: #10b981;
+}
+.Mui-selected:hover{
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.select-var{
+    display: flex;
+    flex-direction: column !important;
+}
+
+.select-var-under{
+    display: flex;
+    flex-direction: column;
+    flex:1;
+}
+.select-var-card{
+    width: 45%;
+    margin: 2%;
+    height: 76vh;
+    overflow: auto !important;
+}
+.select-var-card span, button{
+    font-size: 0.8rem !important;
+}
+.select-reset-btn{
+    background-color: #333 !important;
+}
+.select-reset-btn:hover{
+    background-color: #20252a !important;
+}
+.select-mv-btn{
+    color: #333 !important;
+    border-color: #333 !important;
+}
+.select-mv-btn:hover{
+    color: #20252a !important;
+    border-color: #20252a !important;
+}
+
+.rct-text{
+    margin-top: 0.4rem;
+    margin-bottom: 0.4rem;
+    height: 1.4rem !important;
+}
+
+
+.draw-map{
+    height: 100%;
+    display: flex;
+    flex-direction: column !important;
+}
+
+.chart{
+    /* height: 365px; */
+    flex:1;
+    margin-bottom: 1rem;
+}
+
+.drawmap{
+    height: 50vh;
+}
+.drawchart{
+    flex:1;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-header,.datepick-header, .datepick-picker{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.datainfo{
+    display: flex;
+}
+
+.chartgraph{
+    margin-right: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.val-table-wrap{
+    margin:1rem;
+    height: 88vh;
+}
+
+.processing-header{
+    display:flex;
+    width:100%;
+    margin-top:1rem;
+    align-items:center;
+    justify-content: space-between;
+}
+
+.datatable{
+    width: 100%;
+    margin-right: 1rem;
+
+}
+
+.engine-right{
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    height: 100%;
+}
+
+.dataframe{
+    flex:1;
+    display:flex;
+    /* flex-direction:column; */
+    overflow: auto;
+}
+
+.descript{
+    width: 100%;
+}
+
+Button{
+    text-transform: none !important;
+}
+
+.models-page b{
+    font-size: 0.9rem;
+}
+.select-layer ul{
+    margin-bottom: 0.5rem !important;
+}
+.select-layer span{
+    padding-left: 0.3rem !important;
+}
+
+.layer-input input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+
+/* css for 1920*1080 */
+.css-m9mp0w-MuiToolbar-root{
+    min-height: 5vh !important;
+}
+.css-hyum1k-MuiToolbar-root{
+    min-height: 5vh !important;
+}
+
+.css-aq1gdx-MuiDrawer-docked .MuiDrawer-paper{
+    width: 3vw !important;
+}
+
+.css-n7rtur-MuiPaper-root-MuiAppBar-root{
+    width: 89vw !important;
+}
+
+.css-cvumne-MuiDrawer-docked .MuiDrawer-paper{
+    width: 11vw !important;
+}
+
+.MuiTreeItem-label{
+    font-size:0.75rem !important;
+    height:2.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.css-ahj2mt-MuiTypography-root{
+    font-size: 0.8rem !important;
+    color: #000;
+}
+
+.css-nxo287-MuiInputBase-input-MuiOutlinedInput-input{
+    height: 1vh !important;
+    font-size: 0.8rem !important;
+}
+
+.css-vtdehq-MuiTableCell-root, .css-dsuxgy-MuiTableCell-root{
+font-size: 0.7rem !important;
+}
+
+.css-1knaqv7-MuiButtonBase-root-MuiButton-root{
+    font-size: 0.7rem !important;
+}
+
+.MuiDataGrid-root--densityCompact {
+    font-size: 0.7rem !important;
+}
+
+.MuiInputLabel-sizeSmall{
+    font-size: 0.8rem !important;
+}
+
+.css-kk1bwy-MuiButtonBase-root-MuiMenuItem-root{
+    font-size: 0.75rem !important;
+}
+
+.css-uob957-MuiListSubheader-root{
+    font-size: 0.8rem !important;
+}
+
+.css-1j9kmqg-MuiDataGrid-toolbarContainer{
+    height: 6vh;
+}
+
+.css-10hburv-MuiTypography-root{
+    font-size: 0.75rem !important;
+}
+
+.datainfo .css-vtdehq-MuiTableCell-root{
+    font-size: 0.8rem !important;
+}
+
+.datagrid-header{
+    background-color: #ffffff;
+}
+
+.user-append{
+    display: flex;
+    width: 28vw;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.user-append b{
+    font-size: 0.8rem;
+}
+
+.MuiTablePagination-toolbar p{
+    margin-bottom: 0 !important;
+}
+
+.user-id{
+    color:rgb(69, 128, 238);
+    text-decoration: underline;
+    text-underline-position:under;
+    cursor: pointer;
+}
+
+.home-page-info{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex:0.15;
+    margin-bottom: 0.3rem;
+}
+
+.home-page-graph{
+    width:85%;
+    height:14.5vh;
+    margin-bottom: 1vh;
+    /* padding: 0.2rem; */
+}
+
+.info b{
+    font-size: 0.9rem;
+  }
+
+.info-card{
+    margin-top: 0.2rem;
+    margin-bottom: 0.8rem;
+    padding-left: 0.5rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+
+}
+
+.info-card b{
+    font-size: 0.85rem;
+}
+
+.info-card.descript{
+    height: 6vh;
+    overflow: auto;
+}
+
+.datainfos{
+    height:20vh;
+    overflow: auto;
+}
+
+.loss-chart{
+    height: 20vh;
+}
+
+.MuiCardHeader-title{
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+}
