@@ -13,6 +13,8 @@ const secretKey = 'neir_secret_key';
 const refsecretKey = 'neir_refsecret_keysss_yj';
 const cookieParser = require('cookie-parser');
 const { PythonShell } = require("python-shell");
+const si = require('systeminformation');
+const os = require('os-utils');
 
 app.use(express.urlencoded({
     extended: true
@@ -27,8 +29,8 @@ app.use('/api/tile',express.static(path.join(__dirname,'map/tile')))
 
 
 // NIER변경
-const pythonpath = 'C:\\Users\\choiyj\\Anaconda3\\envs\\nier_env\\python';
-const pythonpathforattn = 'C:\\Users\\choiyj\\Anaconda3\\envs\\nier_attn\\python';
+const pythonpath = 'C:\\Users\\user\\Anaconda3\\envs\\nier_env\\python';
+const pythonpathforattn = 'C:\\Users\\user\\Anaconda3\\envs\\nier_attn\\python';
 
 
 /**
@@ -1937,10 +1939,9 @@ app.post('/api/auth/changeinfo',(req,res)=>{
  */
 app.get('/api/serverinfo/:need',(req,res)=>{
     const need = req.params.need;
-    // const request = `wmic /namespace:\\\\root\\wmi PATH MSAcpi_ThermalZoneTemperature get CurrentTemperature && wmic cpu get loadpercentage`
-    const request = need==='gpu'? 'nvidia-smi -q | findstr /C:"GPU Current Temp" && nvidia-smi -q | findstr /C:"\%" | findstr /C:"Gpu" && nvidia-smi -q | findstr /C:"Memory" | findstr /C:"\%"'
-                                : `wmic /namespace:\\\\root\\wmi PATH MSAcpi_ThermalZoneTemperature get CurrentTemperature && wmic cpu get loadpercentage`
-    exec(request, (err,stdout,stderr)=>{
+    if(need=='gpu'){
+        const request = 'nvidia-smi -q | findstr /C:"GPU Current Temp" && nvidia-smi -q | findstr /C:"\%" | findstr /C:"Gpu" && nvidia-smi -q | findstr /C:"Memory" | findstr /C:"\%"'
+            exec(request, (err,stdout,stderr)=>{
         if (err){
             console.log(err)
             res.json({error:err});
@@ -1951,33 +1952,32 @@ app.get('/api/serverinfo/:need',(req,res)=>{
                 temp : Number(data[0]),
                 use : Number(data[1]),
                 memory : Number(data[2])
-            }}else{
-                const data = stdout.split('\r\r\n').map((item)=>item.trim()).filter((item)=>item);
-                result ={
-                    temp : Number(data[1])/100,
-                    use : Number(data[3])
-                }
+            }
             }
             res.json(result);
         }
-    })
+        })
+    }else{
+        let result = {};
+        let temp;
+        let use;
+        si.cpuTemperature()
+          .then(data => { 
+            temp = Number(Math.round(Number(data['main'])*100) / 100);
+
+            si.currentLoad().then(data => {
+                use = Number(Math.round(Number(data.currentLoad)*100) / 100)
+
+                result = {
+                    temp : temp,
+                    use : use
+                }
+                res.json(result);
+            });
+        });        
+    }
+
 })
-
-// get the cpu temperature
-app.get('/api/cpu/cputemp', (req,res)=>{
-    /*
-        return cpu-temprature by vcgencmd command
-    */
-    exec('wmic /namespace:\\\\root\\wmi PATH MSAcpi_ThermalZoneTemperature get CurrentTemperature', (err,stdout,stderr)=>{
-        if (err){
-            res.json({error:err});
-        } else {
-            res.json(stdout);
-        }
-    })
-})
-
-
 
 // Build & Connect FrontEnd - >Note : This code must be at the bottom.
 
