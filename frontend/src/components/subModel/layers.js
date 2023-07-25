@@ -204,9 +204,9 @@ export const layers = {
                 'dropout':"If non-zero, introduces a Dropout layer on the outputs of each RNN layer except the last layer, with dropout probability equal to dropout.",
                 'bidirectional':"If True, becomes a bidirectional RNN.",
             },
-            'out_size':1,
+            'hidden_size':1,
             'num_layers':1,
-            'nonlinearity':['Tanh','ReLU'],
+            'nonlinearity':['tanh','relu'],
             'bias':['True','False'],
             'batch_first':['False','True'],
             'dropout':0,
@@ -242,9 +242,8 @@ export const layers = {
                 'dropout':"If non-zero, introduces a Dropout layer on the outputs of each RNN layer except the last layer, with dropout probability equal to dropout.",
                 'bidirectional':"If True, becomes a bidirectional GRU.",
             },
-            'out_size':1,
+            'hidden_size':1,
             'num_layers':0,
-            'nonlinearity':['Tanh','ReLU'],
             'bias':['True','False'],
             'batch_first':['False','True'],
             'dropout':0,
@@ -259,7 +258,7 @@ export const layers = {
             },
             'hidden_size':1,
             'bias':['True','False'],
-            'nonlinearity':['Tanh','ReLU'],
+            'nonlinearity':['tanh','relu'],
         },
         'LSTMCell':{
             'descript':{
@@ -346,7 +345,7 @@ export const layers = {
             'stride':1,
             'padding':0,
             'dilation':1,
-            'return_indices':['True','False'],
+            'return_indices':['False','True'],
             'ceil_mode':['False','True'],
         },
         'MaxPool2d':{
@@ -363,7 +362,7 @@ export const layers = {
             'stride':1,
             'padding':0,
             'dilation':1,
-            'return_indices':['True','False'],
+            'return_indices':['False','True'],
             'ceil_mode':['False','True'],
         },
         'MaxPool3d':{
@@ -441,32 +440,6 @@ export const layers = {
             'output_size':0,
             'output_ratio':0.0,
             'return_indices':['False','True'],
-        },
-        'LPPool1d':{
-            'descript':{
-                'LPPool1d':"",
-                'norm_type':"the norm to calculate distance with",
-                'kernel_size':"the size of the window, must be > 0.",
-                'stride':"the stride of the window, must be > 0. Default value is kernel_size",
-                'ceil_mode':"If True, will use ceil instead of floor to compute the output shape. This ensures that every element in the input tensor is covered by a sliding window.",
-            },
-            'norm_type':2,
-            'kernel_size':1,
-            'stride':1,
-            'ceil_mode':['False','True'],
-        },
-        'LPPool2d':{
-            'descript':{
-                'LPPool2d':"",
-                'norm_type':"the norm to calculate distance with",
-                'kernel_size':"the size of the window, must be > 0.",
-                'stride':"the stride of the window, must be > 0. Default value is kernel_size",
-                'ceil_mode':"If True, will use ceil instead of floor to compute the output shape. This ensures that every element in the input tensor is covered by a sliding window.",
-            },
-            'norm_type':2,
-            'kernel_size':1,
-            'stride':1,
-            'ceil_mode':['False','True'],
         },
         'AdaptiveMaxPool1d':{
             'descript':{
@@ -662,19 +635,6 @@ export const layers = {
                 'Sigmoid':"",
             },
         },
-        'AdaptiveLogSoftmaxWithLoss':{
-            'descript':{
-                'AdaptiveLogSoftmaxWithLoss':"",
-                'n_classes':"number of classes.",
-                'cutoffs':"cutoffs for each cluster.",
-                'div_value':"divisor for the cluster sizes.",
-                'head_bias':"if True, adds a bias to the head.",
-            },
-            'n_classes':1,
-            'cutoffs':1,
-            'div_value':1.0,
-            'head_bias':['True','False'],
-        },
     },
     'Normalization Layers':{
         'BatchNorm1d':{
@@ -766,17 +726,6 @@ export const layers = {
             'momentum':0.1,
             'affine':['False','True'],
             'track_running_stats':['False','True'],
-        },
-        'LayerNorm':{
-            'descript':{
-                'LayerNorm':"",
-                'normalized_shape':"input shape from an expected input of size",
-                'eps':"a value added to the denominator for numerical stability. Default: 1e-5",
-                'elementwise_affine':"a boolean value that when set to True, this module has learnable per-element affine parameters initialized to ones (for weights) and zeros (for biases). Default: True",
-            },
-            'normalized_shape':1,
-            'eps':1e-5,
-            'elementwise_affine':['True','False'],
         },
         'GroupNorm':{
             'descript':{

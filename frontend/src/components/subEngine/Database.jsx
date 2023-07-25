@@ -75,6 +75,7 @@ export default function Database(){
     // Show Data 
     const [ShowRegion, setShowRegion] = useState("");
     const [ShowVal, setShowVal] =  useState("");
+    const [ShowValNM, setShowValNM] =  useState("");
     const [ShowData, setShowData] = useState([0]);
     // table Data
     const [TableData, setTableData] =  useState([]);
@@ -90,23 +91,34 @@ export default function Database(){
     const [map, setMap] = useState();
     
     // Get Tree Data
+    // useEffect(()=>{
+    //     setIsdefaultLoading(true);
+    //     fetch('/api/tree/test')
+    //     .then(res=>{
+    //         return res.json();
+    //     })
+    //     .then(data=>{
+    //         const origin = data.origin;
+    //         const selecteddb = data.select;
+    //         setdbData(origin);
+    //         setdefaultData(origin);
+    //         setdbSelectData(selecteddb);
+    //         setdefaultSelectData(selecteddb);
+    //         setIsdefaultLoading(false);
+    //     })
+    // },[])
     useEffect(()=>{
         setIsdefaultLoading(true);
-        fetch('/api/tree/test')
+        fetch('/api/tree/com_code')
         .then(res=>{
             return res.json();
         })
         .then(data=>{
-            const origin = data.origin;
-            const selecteddb = data.select;
+            const origin = data
+            console.log('origin', origin)
             setdbData(origin);
-            setdefaultData(origin);
-            setdbSelectData(selecteddb);
-            setdefaultSelectData(selecteddb);
-            setIsdefaultLoading(false);
         })
     },[])
-
 
     useEffect(() => {
         if(map){
@@ -140,8 +152,9 @@ export default function Database(){
 
 
     useEffect(()=>{
-        const std = dayjs(ChartStart).startOf("D").format();
-        const end = dayjs(ChartEnd).startOf("D").format();
+        const std = dayjs(ChartStart).startOf("D").format('YYYYMMDD');
+        const end = dayjs(ChartEnd).startOf("D").format('YYYYMMDD');
+        
         if (std>end) alert("조회 시작 일자가 종료 일자 이후로 선택되었습니다.");
         else if (std===end) alert("동일 일자가 선택되었습니다");
         else{
@@ -160,7 +173,7 @@ export default function Database(){
                 setIsvalLoading(false);
             })
         }
-    },[ChartStart,ChartEnd,ShowVal,ShowRegion])
+    },[ChartStart,ChartEnd,ShowVal,ShowRegion,ShowValNM])
 
 
     useEffect(()=>{
@@ -323,15 +336,22 @@ export default function Database(){
 
     const handleLabelClick = (e)=>{
         const id = e.value;
-        if(id.split('__').length===4) setMarkRegion(id);
-        else if(id.split('__').length===5){
-            setIsvalLoading(true);
-            setShowRegion(id.split('__').at(-2));
-            setShowVal(id.split('__').at(-1));
-            setMarkRegion(id);
+        // if(id.split('__').length===4) setMarkRegion(id);
+        // else if(id.split('__').length===5){
+        //     setIsvalLoading(true);
+        //     setShowRegion(id.split('__').at(-2));
+        //     setShowVal(id.split('__').at(-1));
+        //     setMarkRegion(id);
+        // }
+        setIsvalLoading(true);
+        setShowRegion(id.split('_')[0])
+        if (id.split('_')[1] === 'undefined') {
+            setShowValNM(id.split('_')[2] + '_' + id.split('_')[3])
+        }else{
+            setShowValNM(id.split('_')[1])    
         }
+        setShowVal(id.split('_')[2] + '_' + id.split('_')[3])
     }
-
 
     return(
         <div className="database-page" style={{height:'100%'}}>
@@ -351,7 +371,7 @@ export default function Database(){
                         sx={{ mx:'1rem',width:'50%'}}
                         variant="outlined"
                         size="small"
-                        onClick={handleSelectBtn}
+                        // onClick={handleSelectBtn}
                         aria-label="move selected"
                         >
                         &gt;
@@ -492,7 +512,7 @@ export default function Database(){
                             datasets:[
                                 {
                                     type:'line',
-                                    label:ShowVal,
+                                    label:ShowValNM,
                                     data:ShowData,
                                     borderColor: 'rgb(0, 0, 0)',
                                     backgroundColor:'rgba(0, 0, 0, 0.5)',
