@@ -46,7 +46,6 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 export default function Database() {
     const { region, changeVal } = useContext(StateContext);
 
-
     const [dbData, setdbData] = useState([]);
     const [defaultData, setdefaultData] = useState([]);
     const [dbSelectData, setdbSelectData] = useState([]);
@@ -245,6 +244,28 @@ export default function Database() {
         return uniqueList;
     }
 
+    const handleShowselectedForProc = (selected) => {
+        function getParentKeysWithValue(list, targetValues, parents = []) {
+            const result = [];
+          
+            for (const item of list) {
+              if (targetValues.includes(item.value)) {
+                result.push([...parents, item.label,item.value]);
+              }
+          
+              if (item.children && item.children.length > 0) {
+                const subResults = getParentKeysWithValue(item.children, targetValues, [...parents, item.label, item.value]);
+                result.push(...subResults);
+              }
+            }
+          
+            return result;
+        }
+        const ParentList = getParentKeysWithValue(dbData, selected)
+        console.log('ParentList', ParentList)
+        return ParentList;
+    }
+
     const getModifiedLabel = (node) => {
         return (
             <>
@@ -258,11 +279,6 @@ export default function Database() {
 
     const handleRemoveBtn = (value) => {
         let tmplist = ShowSelected.filter(data => data !== value);
-        // let select = dbSelectData.filter(data => !data.label.startsWith(label));
-        // abc.filter(data => {
-        //     console.log('data', data);
-        // })
-        // console.log('remove 버튼 select', select);
         setShowSelected(tmplist);
     }
 
@@ -273,8 +289,10 @@ export default function Database() {
     // Select btn click handle
     const handleSelectBtn = () => {
         const tmpselect = handleShowselected(selected)
+        const tmpprocselect = handleShowselectedForProc(selected)
         setShowSelected(tmpselect);
-        // changeVal(select,0);
+        changeVal(tmpprocselect)
+        // changeVal(tmpselect, 0);
         // changeVal(select,0);
         // changeVal(tmpselect,0);
         setSelected([]);
@@ -347,8 +365,6 @@ export default function Database() {
         setShowChartRegion(e.parent.label)
         
     }
-    console.log('ShowData', ShowData)
-    console.log('ShowValNM', ShowValNM)
     return (
         <div className="database-page" style={{ height: '100%' }}>
             <CssBaseline />

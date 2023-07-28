@@ -32,242 +32,6 @@ app.use('/api/tile', express.static(path.join(__dirname, 'map/tile')))
 const pythonpath = 'C:\\Users\\user\\Anaconda3\\envs\\nier_env\\python';
 const pythonpathforattn = 'C:\\Users\\user\\Anaconda3\\envs\\nier_attn\\python';
 
-
-/**
- * 
- * @param {Array} data tree로 작성할 Data
- * @param {boolean} ismulti Data가 Multi형식의 data인지   
- */
-const makeTree = (data, name) => {
-    var nm = "";
-    var id = 0;
-    switch (name) {
-        case "kma": nm = "기상"; break;
-        case "nierwek": id = 1; nm = "수질(주간)"; break;
-        case "nierday": id = 2; nm = "수질(일간)"; break;
-        case "cyano": id = 3; nm = "조류"; break;
-        case "mywater": id = 4; nm = "수문"; break;
-    }
-    const tmp = [];
-    if (id === 0) {
-        var myidx = 0;
-        data.forEach((tmpdata, idx) => {
-            if (idx !== 0) myidx = tmp.length;
-            const key = Object.keys(tmpdata[0]);
-            // child 1
-            key.forEach((reg, ridx) => {
-                tmp.push({
-                    id: `0-${nm}-${reg}`,
-                    name: reg,
-                    children: [],
-                })
-            })
-
-            tmpdata.forEach((d, vidx) => {
-                key.forEach((reg, ridx) => {
-                    // if(!d[reg].includes("일시")&&!d[reg].includes("지점명")&&!d[reg].includes("조사일")&&!d[reg].includes("일자")&&!d[reg].includes("NULL")){
-                    if (!['일시', '지점명', '조사일', '일자', 'NULL'].includes(d[reg].trim())) {
-                        tmp[myidx + ridx].children.push({
-                            parent: reg,
-                            id: `0-${nm}-${reg}-${d[reg].trim()}`,
-                            name: d[reg].trim(),
-                        })
-                    }
-                })
-            })
-        })
-    } else {
-        const key = Object.keys(data[0]);
-        // child 1
-        key.forEach((reg, ridx) => {
-            tmp.push({
-                id: `0-${nm}-${reg}`,
-                name: reg,
-                children: [],
-            })
-        })
-
-
-        data.forEach((d, vidx) => {
-            key.forEach((reg, ridx) => {
-                // if(d[reg]!==null&&!d[reg].includes("일시")&&!d[reg].includes("조사회차")&&!d[reg].includes("지점명")&&!d[reg].includes("조사일")&&!d[reg].includes("NULL")&&!d[reg].includes("측정소명")&&!d[reg].includes("채수위치")&&!d[reg].includes("연도")&&!d[reg].includes("월")&&!d[reg].includes("수계명")&&!d[reg].includes("중권역명")){
-                if (d[reg] !== null && !['일시', '조사회차', '지점명', '조사일', '조사일1', 'NULL', '측정소명', '채수위치', '연도', '월', '수계명', '중권역명', '분류'].includes(d[reg].trim())) {
-                    tmp[ridx].children.push({
-                        parent: reg,
-                        id: `0-${nm}-${reg}-${d[reg].trim()}`,
-                        name: d[reg].trim(),
-                    })
-                }
-            })
-        })
-    }
-    const result = {
-        id: `0-${nm}`,
-        name: nm,
-        children: tmp
-    }
-    return result;
-}
-
-const makeTree2 = (data) => {
-    const regions = Object.keys(data);
-    const result = {};
-    regions.forEach((region) => {
-        const tmpregion = region.split("__");
-        if (!result.hasOwnProperty(tmpregion[0])) result[tmpregion[0]] = {
-            id: `0-${tmpregion[0]}`,
-            name: tmpregion[0],
-            children: []
-        };
-        if (!result[tmpregion[0]].children.some(s => s.name === tmpregion[1])) result[tmpregion[0]].children.push({
-            id: `0-${tmpregion[0]}-${tmpregion[1]}`,
-            name: tmpregion[1],
-            children: []
-        });
-
-        const tmpdata = data[region];
-        tmpdata.forEach((d) => {
-            const key = Object.keys(d);
-            key.forEach((k) => {
-                if (!result[tmpregion[0]].children.filter(s => s.name === tmpregion[1]).at(0).children.some(s => s.name === k)) result[tmpregion[0]].children.filter(s => s.name === tmpregion[1]).at(0).children.push({
-                    id: `0-${tmpregion[0]}-${tmpregion[1]}-${k}`,
-                    name: k,
-                    children: []
-                });
-                if (!result[tmpregion[0]].children.filter(s => s.name === tmpregion[1]).at(0).children.filter(s => s.name === k).at(0).children.some(s => s.name === d[k].trim()) && !d[k] !== null && !['일시', '조사회차', '지점명', '조사일', '조사일1', '조사일.1', 'No', 'NULL', 'NaN', '측정소명', '채수위치', '연도', '월', '수계명', '중권역명', '분류'].includes(d[k].trim())) result[tmpregion[0]].children.filter(s => s.name === tmpregion[1]).at(0).children.filter(s => s.name === k).at(0).children.push({
-                    parent: k,
-                    id: `0-${tmpregion[0]}-${tmpregion[1]}-${k}-${d[k].trim()}`,
-                    name: d[k].trim(),
-                });
-            })
-        })
-
-    })
-    return result;
-}
-
-const makeTree3 = (data, isselect) => {
-    const regions = Object.keys(data);
-    const result = {};
-    regions.forEach((region) => {
-        const tmpregion = region.split("__");
-        if (!result.hasOwnProperty(tmpregion[0]))
-            result[tmpregion[0]] = {
-                value: `0__${tmpregion[0]}`,
-                label: tmpregion[0],
-                showCheckbox: false,
-                children: []
-            };
-        if (!result[tmpregion[0]].children.some(s => s.label === tmpregion[1])) result[tmpregion[0]].children.push({
-            value: `0__${tmpregion[0]}__${tmpregion[1]}`,
-            label: tmpregion[1],
-            showCheckbox: false,
-            children: []
-        });
-
-        const tmpdata = data[region];
-        if (isselect) {
-            tmpdata.forEach((d) => {
-                const key = Object.keys(d);
-                key.forEach((k) => {
-                    if (!result[tmpregion[0]].children.filter(s => s.label === tmpregion[1]).at(0).children.some(s => s.label === k)) result[tmpregion[0]].children.filter(s => s.label === tmpregion[1]).at(0).children.push({
-                        value: `0__${tmpregion[0]}__${tmpregion[1]}__${k}`,
-                        label: k,
-                        showCheckbox: false,
-                        children: []
-                    });
-                    if (!result[tmpregion[0]].children.filter(s => s.label === tmpregion[1]).at(0).children.filter(s => s.label === k).at(0).children.some(s => s.label === d[k].trim()) && !d[k] !== null && !['일시', '조사회차', '지점명', '조사일', '조사일1', '조사일.1', 'No', 'NULL', 'NaN', '측정소명', '채수위치', '연도', '월', '수계명', '중권역명', '분류'].includes(d[k].trim())) result[tmpregion[0]].children.filter(s => s.label === tmpregion[1]).at(0).children.filter(s => s.label === k).at(0).children.push({
-                        parent: k,
-                        showCheckbox: false,
-                        value: `0__${tmpregion[0]}__${tmpregion[1]}__${k}__${d[k].trim()}`,
-                        label: d[k].trim(),
-                    });
-                })
-            }
-            )
-        } else {
-            tmpdata.forEach((d) => {
-                const key = Object.keys(d);
-                key.forEach((k) => {
-                    if (!result[tmpregion[0]].children.filter(s => s.label === tmpregion[1]).at(0).children.some(s => s.label === k)) result[tmpregion[0]].children.filter(s => s.label === tmpregion[1]).at(0).children.push({
-                        value: `0__${tmpregion[0]}__${tmpregion[1]}__${k}`,
-                        label: k,
-                        children: []
-                    });
-                    if (!result[tmpregion[0]].children.filter(s => s.label === tmpregion[1]).at(0).children.filter(s => s.label === k).at(0).children.some(s => s.label === d[k].trim()) && !d[k] !== null && !['일시', '조사회차', '지점명', '조사일', '조사일1', '조사일.1', 'No', 'NULL', 'NaN', '측정소명', '채수위치', '연도', '월', '수계명', '중권역명', '분류'].includes(d[k].trim())) result[tmpregion[0]].children.filter(s => s.label === tmpregion[1]).at(0).children.filter(s => s.label === k).at(0).children.push({
-                        parent: k,
-                        value: `0__${tmpregion[0]}__${tmpregion[1]}__${k}__${d[k].trim()}`,
-                        label: d[k].trim(),
-                    });
-                })
-            }
-            )
-        }
-    })
-    return result;
-}
-
-const makeTree4 = (data, isselect) => {
-    const regions = Object.keys(data);
-    const result = {};
-    regions.forEach((region) => {
-        if (!result.hasOwnProperty(tmpregion[0]))
-            result[tmpregion[0]] = {
-                value: `0__${tmpregion[0]}`,
-                label: tmpregion[0],
-                showCheckbox: false,
-                children: []
-            };
-        // if(!result[tmpregion[0]].children.some(s=>s.label===tmpregion[1]))
-        //     result[tmpregion[0]].children.push({
-        //     value:`0__${tmpregion[0]}__${tmpregion[1]}`,
-        //     label:tmpregion[1],
-        //     showCheckbox:false,
-        //     children:[]
-        // });
-
-        // const tmpdata = data[region];
-        // if(isselect){
-        //     tmpdata.forEach((d)=>{
-        //         const key = Object.keys(d);
-        //         key.forEach((k)=>{
-        //             if(!result[tmpregion[0]].children.filter(s=>s.label===tmpregion[1]).at(0).children.some(s=>s.label===k)) result[tmpregion[0]].children.filter(s=>s.label===tmpregion[1]).at(0).children.push({
-        //                 value:`0__${tmpregion[0]}__${tmpregion[1]}__${k}`,
-        //                 label:k,
-        //                 showCheckbox:false,
-        //                 children:[]
-        //             });
-        //             if(!result[tmpregion[0]].children.filter(s=>s.label===tmpregion[1]).at(0).children.filter(s=>s.label===k).at(0).children.some(s=>s.label===d[k].trim())&&!d[k]!==null&&!['일시','조사회차','지점명','조사일','조사일1','조사일.1','No','NULL','NaN','측정소명','채수위치','연도','월','수계명','중권역명','분류'].includes(d[k].trim())) result[tmpregion[0]].children.filter(s=>s.label===tmpregion[1]).at(0).children.filter(s=>s.label===k).at(0).children.push({
-        //                 parent:k,
-        //                 showCheckbox:false,
-        //                 value:`0__${tmpregion[0]}__${tmpregion[1]}__${k}__${d[k].trim()}`,
-        //                 label:d[k].trim(),
-        //             });
-        //         })
-        //     }
-        // )} else{
-        //     tmpdata.forEach((d)=>{
-        //         const key = Object.keys(d);
-        //         key.forEach((k)=>{
-        //             if(!result[tmpregion[0]].children.filter(s=>s.label===tmpregion[1]).at(0).children.some(s=>s.label===k)) result[tmpregion[0]].children.filter(s=>s.label===tmpregion[1]).at(0).children.push({
-        //                 value:`0__${tmpregion[0]}__${tmpregion[1]}__${k}`,
-        //                 label:k,
-        //                 children:[]
-        //             });
-        //             if(!result[tmpregion[0]].children.filter(s=>s.label===tmpregion[1]).at(0).children.filter(s=>s.label===k).at(0).children.some(s=>s.label===d[k].trim())&&!d[k]!==null&&!['일시','조사회차','지점명','조사일','조사일1','조사일.1','No','NULL','NaN','측정소명','채수위치','연도','월','수계명','중권역명','분류'].includes(d[k].trim())) result[tmpregion[0]].children.filter(s=>s.label===tmpregion[1]).at(0).children.filter(s=>s.label===k).at(0).children.push({
-        //                 parent:k,
-        //                 value:`0__${tmpregion[0]}__${tmpregion[1]}__${k}__${d[k].trim()}`,
-        //                 label:d[k].trim(),
-        //             });
-        //         })
-        //     }
-        // )}
-    })
-    return result;
-}
-
-
-
 /**
  * make Query for many data 
  * @param {Array} data Region object from frontend, `data` is Region data and `stdate` is start date, `eddate` is end date.
@@ -287,16 +51,77 @@ const makedfQuery = (data) => {
     regname = [];
     querys = [];
     tmpobj = {};
-    //change 완료
     data.data.map((d) => {
-        allvars.push(`${d[1]}_${d[2]}_${d[3]}`)
-        if (!tmpobj.hasOwnProperty(`${d[2]}`)) { tmpobj[`${d[2]}`] = [d[3]]; regname.push(`${d[1]}_${d[2]}`); }
-        else tmpobj[`${d[2]}`].push(d[3]);
-    });
-    for (let key in tmpobj) {
-        const vals = '"일시","' + tmpobj[key].join('","') + '"';
-        querys.push(`SELECT ${vals} FROM "${key}" as t(일시) WHERE 일시::TIMESTAMP BETWEEN '${data.stdate}'::TIMESTAMP AND '${data.eddate}'::TIMESTAMP;`)
-    }
+        k = d[2]
+        r = d[5].split('_')[1]
+        v = d[7].split('_').slice(2).join('_')
+        // 데이터 조회 쿼리 생성
+        let sql = ''
+        if (k == '수질'){
+            const table = 'V_MSR_WQMN_DAY'
+            sql = `
+            SELECT WTRSMPLE_DE, ${v}
+            FROM ${table}
+            WHERE TO_DATE(WTRSMPLE_DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND WQMN_CODE = '${r}'
+            ORDER BY WTRSMPLE_DE
+            `
+        } else if (k == '수위'){
+            const table = 'V_FLU_WLV_DAY'
+            sql = `
+            SELECT OBSR_DE, ${v}
+            FROM ${table}
+            WHERE TO_DATE(OBSR_DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND OBSRVT_CODE = '${r}'
+            ORDER BY OBSR_DE
+            `
+        } else if (k == '강수량'){
+            const table = 'V_FLU_GDWETHER_DAY'
+            sql = `
+            SELECT OBSR_DE, ${v}
+            FROM ${table}
+            WHERE TO_DATE(OBSR_DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND OBSRVT_CODE = '${r}'
+            ORDER BY OBSR_DE
+            `
+        } else if (k == '댐'){
+            const table = 'V_FLU_DAM_DAY'
+            sql = `
+            SELECT YEAR || MT || DE, ${v}
+            FROM ${table}
+            WHERE TO_DATE(YEAR || MT || DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND OBSRVT_CODE = '${r}'
+            ORDER BY TO_DATE(YEAR || MT || DE, 'YYYYMMDD')
+            `
+        } else if (k == '유량'){
+            const table = 'V_FLU_FLUX_DAY'
+            sql = `
+            SELECT replace(OBSR_DE, '/', ''), ${v}
+            FROM ${table}
+            WHERE TO_DATE(replace(OBSR_DE, '/', ''), 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND OBSRVT_CODE = '${r}'
+            ORDER BY TO_DATE(replace(OBSR_DE, '/', ''), 'YYYYMMDD')
+            `
+        } else if (k == '조류'){
+            const table = 'V_MSR_SWMN_DAY'
+            sql = `
+            SELECT CHCK_DE, ${v}
+            FROM ${table}
+            WHERE TO_DATE(CHCK_DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND SWMN_CODE = '${r}'
+            ORDER BY CHCK_DE
+            `
+        }
+        
+        querys.push(sql)
+    })
+    console.log(querys)
+    //change 완료
+    // data.data.map((d) => {
+    //     allvars.push(`${d[1]}_${d[2]}_${d[3]}`)
+    //     if (!tmpobj.hasOwnProperty(`${d[2]}`)) { tmpobj[`${d[2]}`] = [d[3]]; regname.push(`${d[1]}_${d[2]}`); }
+    //     else tmpobj[`${d[2]}`].push(d[3]);
+    // });
+    // console.log('tmpobj', tmpobj)
+
+    // for (let key in tmpobj) {
+    //     const vals = '"일시","' + tmpobj[key].join('","') + '"';
+    //     querys.push(`SELECT ${vals} FROM "${key}" as t(일시) WHERE 일시::TIMESTAMP BETWEEN '${data.stdate}'::TIMESTAMP AND '${data.eddate}'::TIMESTAMP;`)
+    // }
     return [regname, querys, allvars];
 }
 
@@ -847,39 +672,6 @@ app.get('/api/list/alldata', (req, res) => {
                 })
             })
             // res.json(myresult);
-        }
-    })
-})
-
-/**
- * tree 형식의 val data return 
- * @param need 필요한 데이터 - nier, kma, cyano, mywater
- * @returns tree 형식의 Data
- */
-app.get('/api/treelist/:need', (req, res) => {
-    var sql = "";
-    switch (req.params.need) {
-        case "kma":
-            sql = "SELECT * FROM info_kma_aso; " + "SELECT * FROM info_kma_aws;";
-            break;
-        case "nierwek":
-            // sql = "SELECT * FROM info_nier_wq_wek"
-            sql = "SELECT * FROM info_nier_wq_day"
-            break;
-        case "nierday":
-            sql = "SELECT * FROM info_nier_wq_day"
-            break;
-        default:
-            sql = `SELECT * FROM info_${req.params.need}`;
-    }
-    client.query(sql, (err, rows) => {
-        if (err) {
-            res.json({ error: err });
-        } else {
-            if (req.params.need === "kma") {
-                res.json(makeTree(rows.map(row => row.rows), req.params.need));
-            }
-            else res.json(makeTree(rows.rows, req.params.need));
         }
     })
 })
@@ -3552,88 +3344,6 @@ app.get('/api/tree/com_code', async (req, res) => {
     }
 });
 
-/**
- * tree 형식의 val data return 
- * @returns tree 형식의 Data
- * /api/treelist --> 업데이트 버전, /api/tree/test 로 사용함
- */
-app.get('/api/tree/test', (req, res) => {
-    client.query("select tablename from PG_TABLES WHERE tablename like 'info__%'", (err, rows) => {
-        if (err) {
-            res.json({ error: err });
-        } else {
-            const data = rows.rows.map(r => r.tablename);
-            const result = maketreeQuery(data);
-            const regions = Object.keys(result);
-            const myresult = {};
-            regions.map(r => {
-                client.query(result[r], (err, rows) => {
-                    if (err) {
-                        res.json({ error: err });
-                    } else {
-                        if (rows.length) {
-                            const tmprows = rows.map(row => row.rows);
-                            const pushrows = tmprows.reduce((acc, cur) => acc.concat(cur));
-                            myresult[r] = pushrows;
-                        }
-                        else myresult[r] = rows.rows;
-                        if (Object.keys(myresult).length === regions.length) {
-                            // res.json(makeTree2(myresult));
-                            res.json({ origin: Object.values(makeTree3(myresult, false)), select: Object.values(makeTree3(myresult, true)) });
-                            // res.json(myresult);
-                        }
-                    }
-                })
-            })
-            // res.json(myresult);
-        }
-    })
-})
-
-app.get('/api/tree/test2', (req, res) => {
-    client.query("select tablename from PG_TABLES WHERE tablename like 'info__%'",
-        (err, rows) => {
-            if (err) {
-                console.log('err', err)
-                res.json({ error: err });
-            } else {
-                // console.log('rows', rows)
-                const data = rows.rows.map(r => r.tablename);
-
-                const result = maketreeQuery(data);
-                // console.log('result', result)
-                const regions = Object.keys(result);
-                // console.log('regions', regions)
-                const myresult = {};
-                regions.map(r => {
-                    client.query(result[r], (err, rows) => {
-                        if (err) {
-                            res.json({ error: err });
-                        } else {
-                            // console.log('rows', rows)
-                            if (rows.length) {
-                                const tmprows = rows.map(row => row.rows);
-                                // console.log('tmprows', tmprows)
-                                const pushrows = tmprows.reduce((acc, cur) => acc.concat(cur));
-                                // console.log('pushrows', pushrows)
-                                myresult[r] = pushrows;
-
-                            }
-                            else myresult[r] = rows.rows;
-                            if (Object.keys(myresult).length === regions.length) {
-                                // res.json(makeTree2(myresult));
-                                // console.log('myresult', myresult)
-                                res.json({ origin: Object.values(makeTree3(myresult, false)), select: Object.values(makeTree3(myresult, true)) });
-                                // res.json(myresult);
-                            }
-                        }
-                    })
-                })
-                // res.json(myresult);
-            }
-        })
-})
-
 app.post('/api/search', (req, res) => { // 데이터 검색
     const data = req.body;
     const select = data.select;
@@ -3717,53 +3427,67 @@ app.get('/api/chartdata/:val/:kind/:region/:st/:ed', async (req, res) => {
     const numzero = result.rows.filter(raw => raw[1] === 0).length;
     const data = result.rows.map(raw => raw[1])
     const days = result.rows.map(raw => raw[0])
+    await connection.close();
     res.json({ nall: numall, nok: numok, nnan: numnan, nzero: numzero, data: data, days: days})
 })
 
 // Using post, get region data => res dataframe
-app.post('/api/dataframe', (req, res) => {
+app.post('/api/dataframe', async(req, res) => {
     const data = req.body;
+    console.log('data', data)
     const querys = makedfQuery(data);
     const regionName = querys[0];
-    const query = querys[1].join(' ');
+    const query = querys[1];
     const result = {};
-    client.query(query, (err, rows) => {
-        if (err) {
-            console.log(err)
-            res.json({ error: err });
-        } else {
-            result['vals'] = regionName;
-            result['dates'] = { 'start': data.stdate, 'end': data.eddate };
-            result['allvars'] = querys[2];
-            if (querys[1].length === 1) {
-                rows.rows.sort((a, b) => a['일시'] - b['일시']);
-                rows.rows.map((v) => {
-                    if (typeof v['일시'] === 'string') v['일시'] = new Date(v['일시'].trim());
-                    offset = v['일시'].getTimezoneOffset();
-                    tmp = new Date(v['일시'].getTime() - (offset * 60 * 1000))
-                    v['일시'] = tmp.toISOString().split('T')[0];
-                })
-                result[`${regionName[0]}`] = rows.rows;
-            } else {
-                rows.map((r, idx) => {
-                    r.rows.sort((a, b) => a['일시'] - b['일시']);
-                    r.rows.map((v) => {
-                        if (typeof v['일시'] === 'string') v['일시'] = new Date(v['일시'].trim());
-                        offset = v['일시'].getTimezoneOffset();
-                        tmp = new Date(v['일시'].getTime() - (offset * 60 * 1000))
-                        v['일시'] = tmp.toISOString().split('T')[0];
-                    })
-                    result[`${regionName[idx]}`] = r.rows;
-                });
-            }
-            // var info = dataframes_info(result);
+    const connection = await oracledb.getConnection(dbConfig)
+    
+        
+    for (const sql of query){
+        const sql_result = await connection.execute(sql)
+        console.log('sql_result :', sql_result)
+        result['vals'] = regionName;
+        result['dates'] = { 'start': data.stdate, 'end': data.eddate };
+        result['allvars'] = querys[2];
+    }
+    
+    // client.query(query, (err, rows) => {
+    //     if (err) {
+    //         console.log(err)
+    //         res.json({ error: err });
+    //     } else {
+    //         result['vals'] = regionName;
+    //         result['dates'] = { 'start': data.stdate, 'end': data.eddate };
+    //         result['allvars'] = querys[2];
+    //         if (querys[1].length === 1) {
+    //             rows.rows.sort((a, b) => a['일시'] - b['일시']);
+    //             rows.rows.map((v) => {
+    //                 if (typeof v['일시'] === 'string') v['일시'] = new Date(v['일시'].trim());
+    //                 offset = v['일시'].getTimezoneOffset();
+    //                 tmp = new Date(v['일시'].getTime() - (offset * 60 * 1000))
+    //                 v['일시'] = tmp.toISOString().split('T')[0];
+    //             })
+    //             result[`${regionName[0]}`] = rows.rows;
+    //         } else {
+    //             rows.map((r, idx) => {
+    //                 r.rows.sort((a, b) => a['일시'] - b['일시']);
+    //                 r.rows.map((v) => {
+    //                     if (typeof v['일시'] === 'string') v['일시'] = new Date(v['일시'].trim());
+    //                     offset = v['일시'].getTimezoneOffset();
+    //                     tmp = new Date(v['일시'].getTime() - (offset * 60 * 1000))
+    //                     v['일시'] = tmp.toISOString().split('T')[0];
+    //                 })
+    //                 result[`${regionName[idx]}`] = r.rows;
+    //             });
+    //         }
+    //         // var info = dataframes_info(result);
             var realresult = dataframes(result);
-            var info = dataframes_info(realresult, querys[2]);
-            if (!Array.isArray(info)) res.json({ error: `Data Error, 선택한 변수의 기간에 데이터가 없습니다. 기간 및 변수를 변경해주세요. Error Var : ${info.error}` })
-            // var graph = datagraph(result);
-            res.json({ info: info, data: realresult, vals: regionName });
-        }
-    })
+    //         var info = dataframes_info(realresult, querys[2]);
+    //         if (!Array.isArray(info)) res.json({ error: `Data Error, 선택한 변수의 기간에 데이터가 없습니다. 기간 및 변수를 변경해주세요. Error Var : ${info.error}` })
+    //         // var graph = datagraph(result);
+    //         res.json({ info: info, data: realresult, vals: regionName });
+    //     }
+    // })
+    await connection.close();
 })
 
 app.post('/api/dataframe/info', (req, res) => { // Data info return
