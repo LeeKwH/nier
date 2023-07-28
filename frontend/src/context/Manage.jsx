@@ -45,13 +45,20 @@ const StateProvider = ({ children }) => {
 
   
   const changeVal = (reg,mode) =>{
-    let tmp = reg.filter((d,i)=>{return reg.indexOf(d)===i;})
-    // if(mode === 0) tmp = reg.filter((v)=>v.split('-').length === 4);
-    if(mode === 0) tmp = tmp.map(function(v){return v.split('__').length>=5?v.slice(3):null});
-    tmp = tmp.filter((v)=>v!==null).map((t)=>t.split('__'))
-    tmp = tmp.map(t =>{if(t.length === 5) return [t[0],t[1],t[2],t[3]+t[4]]; else return t;})
-    tmp = tmp.sort(function(a,b){return a[0]<b[0]?-1:a[0]>b[0]?1:0});
-    setregion(tmp);
+    // 여기서 나와야 하는 구조
+
+    let tmp = [['낙동강', '조류', '강정고령보', '투명도']]
+    console.log('preprocessing reg', reg)
+    const frontList = reg.map((item) => item.slice(0, 4));
+    const backList = reg.map((item) => item.slice(-4));
+    const combinedList = frontList.map((item, index) => [...item, ...backList[index]]);
+    // let tmp = reg.filter((d,i)=>{return reg.indexOf(d)===i;})
+    // // if(mode === 0) tmp = reg.filter((v)=>v.split('-').length === 4);
+    // if(mode === 0) tmp = tmp.map(function(v){return v.split('__').length>=5?v.slice(3):null});
+    // tmp = tmp.filter((v)=>v!==null).map((t)=>t.split('__'))
+    // tmp = tmp.map(t =>{if(t.length === 5) return [t[0],t[1],t[2],t[3]+t[4]]; else return t;})
+    // tmp = tmp.sort(function(a,b){return a[0]<b[0]?-1:a[0]>b[0]?1:0});
+    setregion(combinedList);
   }
 
   const changeProcData = (data) =>{
