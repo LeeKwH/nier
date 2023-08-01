@@ -224,9 +224,11 @@ export default function Preprocessing() {
         const arrayinfocls = [];
         const cls = [{ field: 'date', headerName: 'Date', width: 90, minWidth: 75, headerClassName: 'datagrid-header' }];
         const infocls = [{ field: 'id', headerName: 'Summary', width: 90, minWidth: 80, headerClassName: 'datagrid-header' }];
+        console.log('preprocessing region', region)
         region.map((r, idx) => {
-            arrayinfocls.push({ field: `${r[1]}_${r[2]}_${r[3]}`, width: 75, minWidth: 75, sortable: false, headerAlign: 'left', headerName: `x${idx}`, type: 'number', headerClassName: 'datagrid-header' });
-            arraycls.push({ field: `${r[1]}_${r[2]}_${r[3]}`, width: 75, minWidth: 75, headerAlign: 'left', sortable: false, type: 'number', editable: true, headerClassName: 'datagrid-header', renderHeader: () => (<span><Checkbox key={idx} checked={!!checkBox[idx]} onChange={(e) => handleCheck(e, idx, `${r[1]}_${r[2]}_${r[3]}`)} size="small" />{`x${idx}`}</span>) });
+            console.log('preprocessing r')
+            arrayinfocls.push({ field: `${r[2]}_${r[4]}_${r[6]}`, width: 75, minWidth: 75, sortable: false, headerAlign: 'left', headerName: `x${idx}`, type: 'number', headerClassName: 'datagrid-header' });
+            arraycls.push({ field: `${r[2]}_${r[4]}_${r[6]}`, width: 75, minWidth: 75, headerAlign: 'left', sortable: false, type: 'number', editable: true, headerClassName: 'datagrid-header', renderHeader: () => (<span><Checkbox key={idx} checked={!!checkBox[idx]} onChange={(e) => handleCheck(e, idx, `${r[2]}_${r[4]}_${r[6]}`)} size="small" />{`x${idx}`}</span>) });
         })
         setColumns([...cls, ...arraycls]);
         setInfocolumns([...infocls, ...arrayinfocls]);
@@ -303,6 +305,7 @@ export default function Preprocessing() {
                 .then(response => {
                     if (response.hasOwnProperty('error')) { alert(response.error); setIsloadRow(false); setProselectval([]); }
                     else {
+                        console.log('response.data', response.data)
                         setRows(response.data);
                         makeChartfromProc(response.data);
                         setInforows(response.info);

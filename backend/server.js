@@ -47,20 +47,35 @@ const pythonpathforattn = 'C:\\Users\\user\\Anaconda3\\envs\\nier_attn\\python';
  * @returns Query str Array
  */
 const makedfQuery = (data) => {
+    // allvars 구조
+    // allvars: ['수질_골지천1_수온(℃)', '수질_골지천2_수온(℃)']
+    
     allvars = [];
     regname = [];
     querys = [];
     tmpobj = {};
     data.data.map((d) => {
-        k = d[2]
-        r = d[5].split('_')[1]
-        v = d[7].split('_').slice(2).join('_')
+        // console.log('allvar', [d[2], d[4], d[6]].join('_'))
+        // d[2] = 수질
+        // d[4] = 골지천2
+        // d[5] = 
+        // d[6] == 카드뮴
+        allvars.push(`${d[2]}_${d[4]}_${d[6]}`)
+        if(!tmpobj.hasOwnProperty(d[7].split('_').slice(0, 2).join('_'))) 
+            {tmpobj[d[7].split('_').slice(0, 2).join('_')]=[d[7].split('_').slice(2).join('_')]; regname.push(`${d[2]}_${d[4]}`);}
+        else
+            tmpobj[d[7].split('_').slice(0, 2).join('_')].push(d[7].split('_').slice(2).join('_'));      
+    })
+    for (let key in tmpobj){
+        const vals = tmpobj[key].join(',');
         // 데이터 조회 쿼리 생성
+        k = key.split('_')[0]
+        r = key.split('_')[1]
         let sql = ''
         if (k == '수질'){
             const table = 'V_MSR_WQMN_DAY'
             sql = `
-            SELECT WTRSMPLE_DE, ${v}
+            SELECT WTRSMPLE_DE, ${vals}
             FROM ${table}
             WHERE TO_DATE(WTRSMPLE_DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND WQMN_CODE = '${r}'
             ORDER BY WTRSMPLE_DE
@@ -106,22 +121,8 @@ const makedfQuery = (data) => {
             ORDER BY CHCK_DE
             `
         }
-        
         querys.push(sql)
-    })
-    console.log(querys)
-    //change 완료
-    // data.data.map((d) => {
-    //     allvars.push(`${d[1]}_${d[2]}_${d[3]}`)
-    //     if (!tmpobj.hasOwnProperty(`${d[2]}`)) { tmpobj[`${d[2]}`] = [d[3]]; regname.push(`${d[1]}_${d[2]}`); }
-    //     else tmpobj[`${d[2]}`].push(d[3]);
-    // });
-    // console.log('tmpobj', tmpobj)
-
-    // for (let key in tmpobj) {
-    //     const vals = '"일시","' + tmpobj[key].join('","') + '"';
-    //     querys.push(`SELECT ${vals} FROM "${key}" as t(일시) WHERE 일시::TIMESTAMP BETWEEN '${data.stdate}'::TIMESTAMP AND '${data.eddate}'::TIMESTAMP;`)
-    // }
+    }
     return [regname, querys, allvars];
 }
 
@@ -143,11 +144,14 @@ const maketreeQuery = (data) => {
 const getDates = (std, end) => {
 
     const dateArray = [];
-    let startDate = new Date(std);
-    startDate = new Date(startDate.setDate(startDate.getDate() + 1));
-    let endDate = new Date(end);
-    endDate = new Date(endDate.setDate(endDate.getDate() + 1));
-
+    let year = std.substring(0, 4);
+    let month = std.substring(4, 6);
+    let day = std.substring(6, 8);
+    let startDate = new Date(`${year}-${month}-${day}`);
+    year = end.substring(0, 4);
+    month = end.substring(4, 6);
+    day = end.substring(6, 8);
+    let endDate = new Date(`${year}-${month}-${day}`);
     while (startDate <= endDate) {
         dateArray.push(startDate.toISOString().split('T')[0]);
         startDate.setDate(startDate.getDate() + 1);
@@ -192,9 +196,13 @@ const dataframes = (data) => {
     const std = data.dates.start;
     const edd = data.dates.end;
     const alldates = getDates(std, edd);
+    console.log('alldates', alldates)
     const allvars = data.allvars;
+    console.log('allvars', allvars)
     const nulls = [];
+    console.log('data', data)
     regs.map((r) => {
+        console.log('r', r)
         if (data[r].length === 0) {
             nulls.push(r);
         }
@@ -204,7 +212,7 @@ const dataframes = (data) => {
             tmpvals.map((v) => {
                 if (v !== '일시') {
                     d[v] = !isNaN(d[v]) ? Number(d[v]) : d[v].trim() === "NaN" ? null : d[v].trim();
-                    tmpdata[`${r}_${v}`] = d[v];
+                    tmpdata[`${v}`] = d[v];
                 }
             });
             if (!result.hasOwnProperty(d['일시'])) {
@@ -240,7 +248,7 @@ const dataframes = (data) => {
     passR.map((d, idx) => {
         realresult.push({ ...{ id: idx }, ...d })
     })
-
+    console.log('realresult', realresult)
     return realresult;
 }
 
@@ -3434,59 +3442,72 @@ app.get('/api/chartdata/:val/:kind/:region/:st/:ed', async (req, res) => {
 // Using post, get region data => res dataframe
 app.post('/api/dataframe', async(req, res) => {
     const data = req.body;
-    console.log('data', data)
+    
     const querys = makedfQuery(data);
+    // 기존 지오시스템의 querys 구조
+    /*querys [
+        [ '기상_가곡' ],
+        [
+          `SELECT "일시","평균기온" FROM "가곡" as t(일시) WHERE 일시::TIMESTAMP BETWEEN '2023-04-30T00:00:00+09:00'::TIMESTAMP AND '2023-07-31T00:00:00+09:00'::TIMESTAMP;`
+        ],
+        [ '기상_가곡_평균기온' ]
+      ]
+    */
+    // console.log('querys', querys)
     const regionName = querys[0];
+    console.log('regionName', regionName)
     const query = querys[1];
+
     const result = {};
     const connection = await oracledb.getConnection(dbConfig)
     
-        
-    for (const sql of query){
-        const sql_result = await connection.execute(sql)
-        console.log('sql_result :', sql_result)
-        result['vals'] = regionName;
-        result['dates'] = { 'start': data.stdate, 'end': data.eddate };
-        result['allvars'] = querys[2];
+    result['vals'] = regionName;
+    result['dates'] = { 'start': data.stdate, 'end': data.eddate };
+    result['allvars'] = querys[2];
+    if(query.length === 1){
+        const sql_result = await connection.execute(query[0])
+        row = []
+                  
+        sql_result.rows.map((r) => {
+            // console.log('r', r)
+            // const key = querys[2][0]
+            // result[`${regionName[0]}`] = {'일시': r[0], [key]: r[1]};
+            tmp = {}  
+            r.map((v, idx)=>{
+                if (idx===0){
+                    tmp['일시'] = `${r[idx].substring(0, 4)}-${r[idx].substring(4, 6)}-${r[idx].substring(6, 8)}`
+                } else{
+                    tmp[allvars[idx-1]] = r[idx]
+                }
+                
+            }
+            )
+            row.push(tmp)
+        })
+        result[`${regionName[0]}`] = row
     }
-    
-    // client.query(query, (err, rows) => {
-    //     if (err) {
-    //         console.log(err)
-    //         res.json({ error: err });
-    //     } else {
-    //         result['vals'] = regionName;
-    //         result['dates'] = { 'start': data.stdate, 'end': data.eddate };
-    //         result['allvars'] = querys[2];
-    //         if (querys[1].length === 1) {
-    //             rows.rows.sort((a, b) => a['일시'] - b['일시']);
-    //             rows.rows.map((v) => {
-    //                 if (typeof v['일시'] === 'string') v['일시'] = new Date(v['일시'].trim());
-    //                 offset = v['일시'].getTimezoneOffset();
-    //                 tmp = new Date(v['일시'].getTime() - (offset * 60 * 1000))
-    //                 v['일시'] = tmp.toISOString().split('T')[0];
-    //             })
-    //             result[`${regionName[0]}`] = rows.rows;
-    //         } else {
-    //             rows.map((r, idx) => {
-    //                 r.rows.sort((a, b) => a['일시'] - b['일시']);
-    //                 r.rows.map((v) => {
-    //                     if (typeof v['일시'] === 'string') v['일시'] = new Date(v['일시'].trim());
-    //                     offset = v['일시'].getTimezoneOffset();
-    //                     tmp = new Date(v['일시'].getTime() - (offset * 60 * 1000))
-    //                     v['일시'] = tmp.toISOString().split('T')[0];
-    //                 })
-    //                 result[`${regionName[idx]}`] = r.rows;
-    //             });
-    //         }
-    //         // var info = dataframes_info(result);
-            var realresult = dataframes(result);
-    //         var info = dataframes_info(realresult, querys[2]);
-    //         if (!Array.isArray(info)) res.json({ error: `Data Error, 선택한 변수의 기간에 데이터가 없습니다. 기간 및 변수를 변경해주세요. Error Var : ${info.error}` })
-    //         // var graph = datagraph(result);
-    //         res.json({ info: info, data: realresult, vals: regionName });
-    //     }
-    // })
+    else
+    {   
+        for (let idx = 0; idx < query.length; idx++) {
+            const sql_result = await connection.execute(query[idx]);
+            const row = [];
+            sql_result.rows.map((r) => {
+              const tmp = { '일시': `${r[0].substring(0, 4)}-${r[0].substring(4, 6)}-${r[0].substring(6, 8)}` };
+              for (let i = 1; i < r.length; i++) {
+                tmp[allvars[i - 1 + Math.max(r.length - 2, 0)]] = r[i];
+              }
+              row.push(tmp);
+            });
+            result[regionName[idx]] = row;
+          }
+    }
+    var realresult = dataframes(result);
+    // console.log('realresult', realresult)
+    var info = dataframes_info(realresult, querys[2]);
+    if (!Array.isArray(info)) res.json({ error: `Data Error, 선택한 변수의 기간에 데이터가 없습니다. 기간 및 변수를 변경해주세요. Error Var : ${info.error}` })
+    // // // var graph = datagraph(result);
+    const uniqueList = regionName.filter((item, index) => regionName.indexOf(item) === index);
+    res.json({ info: info, data: realresult, vals: uniqueList });
     await connection.close();
 })
 
