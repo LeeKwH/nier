@@ -60,22 +60,26 @@ export default function Preprocessing() {
 
     const makeSelectVal = (checks) => {
         let valtmp = [...proselectval];
+        console.log('64 valtmp', valtmp)
         checks.map((c, idx) => {
             if (!c) {
-                const taget = `${region[idx][1]}_${region[idx][2]}_${region[idx][3]}`;
+                const taget = `${region[idx][2]}_${region[idx][4]}_${region[idx][6].replace(/\(.*\)/g, '')}`;
                 if (proselectval.includes(taget)) valtmp = valtmp.filter((v) => v !== taget);
             } else {
-                const taget = `${region[idx][1]}_${region[idx][2]}_${region[idx][3]}`;
+                const taget = `${region[idx][2]}_${region[idx][4]}_${region[idx][6].replace(/\(.*\)/g, '')}`;
                 if (!proselectval.includes(taget)) valtmp.push(taget);
             }
         })
         valtmp = [...new Set(valtmp)];
+        valtmp = valtmp.map((item) => item.replace(/\(.*\)/g, ''))
+        console.log('75 valtmp', valtmp)
         if (valtmp !== proselectval) setProselectval(valtmp);
     }
 
     const handleCheck = (event, idx, region) => {
         // let tmp = proselectval.length!==0?[...checkBox]:Array(region.length).fill(false);
         let tmp = [...checkBox];
+        console.log('81 tmp', tmp)
         tmp[idx] = event.target.checked;
         makeSelectVal(tmp);
         setCheckBox(tmp);
@@ -83,8 +87,10 @@ export default function Preprocessing() {
 
     const handleCheckAll = (event) => {
         let tmp = Array(region.length).fill(event.target.checked);
+        console.log('90 tmp', tmp)
         if (event.target.checked) {
-            let tmpregion = region.map(d => `${d[1]}_${d[2]}_${d[3]}`);
+            let tmpregion = region.map(d => `${d[2]}_${d[4]}_${d[6].replace(/\(.*\)/g, '')}`);
+            console.log('93 tmpregion', tmpregion)
             setProselectval(tmpregion);
         }
         else setProselectval([]);
@@ -111,6 +117,7 @@ export default function Preprocessing() {
             const func = selectedIdx.split('-')[0];
             const method = selectedIdx.split('-')[1];
             const tmpatt = descript[func][method];
+
             if (tmpatt !== "" && att === "") {
                 if (tmpatt === "column") setAtt(proselectval[0]);
                 else setAtt("1");
@@ -143,7 +150,10 @@ export default function Preprocessing() {
                     return;
                 }
             }
-            const historyAtt = func === "InterpolUnivar" && (method !== "spline" || method !== "polynomial") ? "0" : att;
+            const historyAtt = func === "InterpolUnivar" && (method !== "spline" && method !== "polynomial") ? "0" : att;
+            console.log('selectedIdx', selectedIdx)
+            console.log('historyAtt', historyAtt)
+            console.log('...proselectval', ...proselectval)
             let oneprocess = [selectedIdx, historyAtt, ...proselectval];
             fetch('/api/python/preprocessing/one', {
                 method: 'POST',
@@ -224,11 +234,9 @@ export default function Preprocessing() {
         const arrayinfocls = [];
         const cls = [{ field: 'date', headerName: 'Date', width: 90, minWidth: 75, headerClassName: 'datagrid-header' }];
         const infocls = [{ field: 'id', headerName: 'Summary', width: 90, minWidth: 80, headerClassName: 'datagrid-header' }];
-        console.log('preprocessing region', region)
         region.map((r, idx) => {
-            console.log('preprocessing r')
-            arrayinfocls.push({ field: `${r[2]}_${r[4]}_${r[6]}`, width: 75, minWidth: 75, sortable: false, headerAlign: 'left', headerName: `x${idx}`, type: 'number', headerClassName: 'datagrid-header' });
-            arraycls.push({ field: `${r[2]}_${r[4]}_${r[6]}`, width: 75, minWidth: 75, headerAlign: 'left', sortable: false, type: 'number', editable: true, headerClassName: 'datagrid-header', renderHeader: () => (<span><Checkbox key={idx} checked={!!checkBox[idx]} onChange={(e) => handleCheck(e, idx, `${r[2]}_${r[4]}_${r[6]}`)} size="small" />{`x${idx}`}</span>) });
+            arrayinfocls.push({ field: `${r[2]}_${r[4]}_${r[6].replace(/\(.*\)/g, '')}`, width: 75, minWidth: 75, sortable: false, headerAlign: 'left', headerName: `x${idx}`, type: 'number', headerClassName: 'datagrid-header' });
+            arraycls.push({ field: `${r[2]}_${r[4]}_${r[6].replace(/\(.*\)/g, '')}`, width: 75, minWidth: 75, headerAlign: 'left', sortable: false, type: 'number', editable: true, headerClassName: 'datagrid-header', renderHeader: () => (<span><Checkbox key={idx} checked={!!checkBox[idx]} onChange={(e) => handleCheck(e, idx, `${r[2]}_${r[4]}_${r[6]}`)} size="small" />{`x${idx}`}</span>) });
         })
         setColumns([...cls, ...arraycls]);
         setInfocolumns([...infocls, ...arrayinfocls]);
@@ -445,7 +453,7 @@ export default function Preprocessing() {
         [mutateRow],
     );
 
-
+    console.log('columns', columns)
 
     return (
         <div className="preprocessing-page" style={{ height: "100%" }}>

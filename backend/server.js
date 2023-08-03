@@ -72,6 +72,7 @@ const makedfQuery = (data) => {
         k = key.split('_')[0]
         r = key.split('_')[1]
         let sql = ''
+        console.log('vals', vals)
         if (k == '수질'){
             const table = 'V_MSR_WQMN_DAY'
             sql = `
@@ -83,7 +84,7 @@ const makedfQuery = (data) => {
         } else if (k == '수위'){
             const table = 'V_FLU_WLV_DAY'
             sql = `
-            SELECT OBSR_DE, ${v}
+            SELECT OBSR_DE, ${vals}
             FROM ${table}
             WHERE TO_DATE(OBSR_DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND OBSRVT_CODE = '${r}'
             ORDER BY OBSR_DE
@@ -91,7 +92,7 @@ const makedfQuery = (data) => {
         } else if (k == '강수량'){
             const table = 'V_FLU_GDWETHER_DAY'
             sql = `
-            SELECT OBSR_DE, ${v}
+            SELECT OBSR_DE, ${vals}
             FROM ${table}
             WHERE TO_DATE(OBSR_DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND OBSRVT_CODE = '${r}'
             ORDER BY OBSR_DE
@@ -99,7 +100,7 @@ const makedfQuery = (data) => {
         } else if (k == '댐'){
             const table = 'V_FLU_DAM_DAY'
             sql = `
-            SELECT YEAR || MT || DE, ${v}
+            SELECT YEAR || MT || DE, ${vals}
             FROM ${table}
             WHERE TO_DATE(YEAR || MT || DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND OBSRVT_CODE = '${r}'
             ORDER BY TO_DATE(YEAR || MT || DE, 'YYYYMMDD')
@@ -107,7 +108,7 @@ const makedfQuery = (data) => {
         } else if (k == '유량'){
             const table = 'V_FLU_FLUX_DAY'
             sql = `
-            SELECT replace(OBSR_DE, '/', ''), ${v}
+            SELECT replace(OBSR_DE, '/', ''), ${vals}
             FROM ${table}
             WHERE TO_DATE(replace(OBSR_DE, '/', ''), 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND OBSRVT_CODE = '${r}'
             ORDER BY TO_DATE(replace(OBSR_DE, '/', ''), 'YYYYMMDD')
@@ -115,7 +116,7 @@ const makedfQuery = (data) => {
         } else if (k == '조류'){
             const table = 'V_MSR_SWMN_DAY'
             sql = `
-            SELECT CHCK_DE, ${v}
+            SELECT CHCK_DE, ${vals}
             FROM ${table}
             WHERE TO_DATE(CHCK_DE, 'YYYYMMDD') BETWEEN TO_DATE(${data.stdate}, 'YYYYMMDD') AND TO_DATE(${data.eddate}, 'YYYYMMDD') AND SWMN_CODE = '${r}'
             ORDER BY CHCK_DE
@@ -124,21 +125,6 @@ const makedfQuery = (data) => {
         querys.push(sql)
     }
     return [regname, querys, allvars];
-}
-
-const maketreeQuery = (data) => {
-    const query = {};
-    data.map(d => {
-        const tmpd = d.split('__');
-        if (tmpd.length !== 4) query[tmpd[1] + "__" + tmpd[2]] = `SELECT * FROM ${d}`;
-        else if (tmpd[3] === "0") {
-            const subs = data.filter(d => d.includes(tmpd[1] + "__" + tmpd[2]));
-            var tmpquery = subs.join('; SELECT * FROM ');
-            tmpquery = 'SELECT * FROM ' + tmpquery + ';';
-            query[tmpd[1] + "__" + tmpd[2]] = tmpquery;
-        }
-    })
-    return query;
 }
 
 const getDates = (std, end) => {
@@ -190,19 +176,17 @@ const getDates = (std, end) => {
  * @returns Object for Preprocessing Data
  */
 const dataframes = (data) => {
+    console.log('data', data)
     const result = {};
     const realresult = [];
     const regs = data.vals
     const std = data.dates.start;
     const edd = data.dates.end;
     const alldates = getDates(std, edd);
-    console.log('alldates', alldates)
     const allvars = data.allvars;
-    console.log('allvars', allvars)
+    console.log('202 allvars', allvars)
     const nulls = [];
-    console.log('data', data)
     regs.map((r) => {
-        console.log('r', r)
         if (data[r].length === 0) {
             nulls.push(r);
         }
@@ -215,6 +199,7 @@ const dataframes = (data) => {
                     tmpdata[`${v}`] = d[v];
                 }
             });
+            console.log('tmpdata', tmpdata)
             if (!result.hasOwnProperty(d['일시'])) {
                 result[d['일시']] = tmpdata;
             } else {
@@ -222,7 +207,6 @@ const dataframes = (data) => {
             }
         })
     });
-
     alldates.map((d) => {
         if (!result.hasOwnProperty(d)) {
             result[d] = {};
@@ -248,7 +232,6 @@ const dataframes = (data) => {
     passR.map((d, idx) => {
         realresult.push({ ...{ id: idx }, ...d })
     })
-    console.log('realresult', realresult)
     return realresult;
 }
 
@@ -374,8 +357,12 @@ const dataframes_info_for_process = (data) => { // obs : 관측 데이터, nan :
  */
 const processEncode = (data) => {
     let val = [...data.request];
+    console.log('data', data)
+    console.log('val', val)
     val.shift();
     val.shift();
+    console.log('val', val)
+    val = val.map((item) => item.replace(/\(.*\)/g, ''));
     const passdata = {};
     passdata['date'] = data.data.map(d => d.date);
     val.map(v => {
@@ -3200,6 +3187,7 @@ app.get('/api/tree/com_code', async (req, res) => {
                 for (const emptyNode of flux_emptyNodes) {
                     const att_list = [];
                     const att_flux_nm = ["유량(㎥/s)"]
+                    // const att_flux_nm = ["유량"]
                     const att_flux_code = ["FLUX"]
                     for (let i = 0; i < att_flux_nm.length; i++) {
                         const att_node = {
@@ -3325,6 +3313,7 @@ app.get('/api/tree/com_code', async (req, res) => {
                 for (const emptyNode of swmn_emptyNodes) {
                     const att_list = [];
                     const att_swmn_nm = ["수온(℃)", "pH", "DO(㎎/L)", "투명도", "탁도", "Chl-a (㎎/㎥)", "유해남조류 세포수 (cells/㎖)", "Microcystis", "Anabaena", "Oscillatoria", "Aphanizomenon", "지오스민(ng/L)", "2MIB(ng/L)", "Microcystin-LR (μg/L)"]
+                    // const att_swmn_nm = ["수온", "pH", "DO", "투명도", "탁도", "Chl-a", "유해남조류 세포수", "Microcystis", "Anabaena", "Oscillatoria", "Aphanizomenon", "지오스민", "2MIB", "Microcystin-LR"]
                     const att_swmn_code = ["ITEM_TEMP_SURF", "ITEM_PH_SURF", "ITEM_DOC_SURF", "ITEM_TRANSPARENCY", "ITEM_TURBIDITY", "ITEM_SUF_CLOA", "ITEM_BLUE_GREEN_ALGAE", "ITEM_BGA_MICROCYSTIS", "ITEM_BGA_ANABAENA", "ITEM_BGA_OSILLATORIA", "ITEM_BGA_APHANIZOMENON", "ITEM_GEOSMIN", "ITEM_2MIB", "ITEM_MICROCYSTIN"]
                     for (let i = 0; i < att_swmn_nm.length; i++) {
                         const att_node = {
@@ -3455,7 +3444,6 @@ app.post('/api/dataframe', async(req, res) => {
     */
     // console.log('querys', querys)
     const regionName = querys[0];
-    console.log('regionName', regionName)
     const query = querys[1];
 
     const result = {};
@@ -3463,7 +3451,9 @@ app.post('/api/dataframe', async(req, res) => {
     
     result['vals'] = regionName;
     result['dates'] = { 'start': data.stdate, 'end': data.eddate };
-    result['allvars'] = querys[2];
+    const cleanedVars = querys[2].map((item) => item.split('_')[0] + '_' + item.split('_')[1] + '_' + item.split('_')[2].replace(/\(.*\)/g, ''));
+    result['allvars'] = cleanedVars;
+
     if(query.length === 1){
         const sql_result = await connection.execute(query[0])
         row = []
@@ -3477,9 +3467,8 @@ app.post('/api/dataframe', async(req, res) => {
                 if (idx===0){
                     tmp['일시'] = `${r[idx].substring(0, 4)}-${r[idx].substring(4, 6)}-${r[idx].substring(6, 8)}`
                 } else{
-                    tmp[allvars[idx-1]] = r[idx]
+                    tmp[cleanedVars[idx-1]] = r[idx]
                 }
-                
             }
             )
             row.push(tmp)
@@ -3487,26 +3476,31 @@ app.post('/api/dataframe', async(req, res) => {
         result[`${regionName[0]}`] = row
     }
     else
-    {   
+    {   start_idx = 0
         for (let idx = 0; idx < query.length; idx++) {
             const sql_result = await connection.execute(query[idx]);
             const row = [];
+            let count = sql_result.metaData.length - 1
             sql_result.rows.map((r) => {
               const tmp = { '일시': `${r[0].substring(0, 4)}-${r[0].substring(4, 6)}-${r[0].substring(6, 8)}` };
               for (let i = 1; i < r.length; i++) {
-                tmp[allvars[i - 1 + Math.max(r.length - 2, 0)]] = r[i];
+                tmp[cleanedVars[start_idx + i - 1]] = r[i];
               }
               row.push(tmp);
             });
+            start_idx += count
             result[regionName[idx]] = row;
           }
     }
+    // console.log('result', result)
     var realresult = dataframes(result);
-    // console.log('realresult', realresult)
-    var info = dataframes_info(realresult, querys[2]);
+
+    var info = dataframes_info(realresult, cleanedVars);
     if (!Array.isArray(info)) res.json({ error: `Data Error, 선택한 변수의 기간에 데이터가 없습니다. 기간 및 변수를 변경해주세요. Error Var : ${info.error}` })
     // // // var graph = datagraph(result);
     const uniqueList = regionName.filter((item, index) => regionName.indexOf(item) === index);
+    // console.log('3518 realresult', realresult)
+    // console.log('info', info)
     res.json({ info: info, data: realresult, vals: uniqueList });
     await connection.close();
 })
@@ -3521,7 +3515,6 @@ app.post('/api/dataframe/info', (req, res) => { // Data info return
 app.post('/api/python/preprocessing/one', (req, res) => {
     const data = req.body;
     const passdata = processEncode(data);
-    // console.log(data.data.map(v => v['date']))
     const func = data.request[0].split('-')[0];
     const method = data.request[0].split('-')[1];
     const att = data.request[1];
@@ -3529,7 +3522,7 @@ app.post('/api/python/preprocessing/one', (req, res) => {
     const id = data.id;
     const key = data.key;
 
-
+    console.log('passdata', passdata)
     // Drop Nan
     if (method === 'any') {
         let result = data.data;
@@ -3590,20 +3583,18 @@ app.post('/api/python/preprocessing/one', (req, res) => {
                     break;
             }
         }
-
         if (!errorcheck) {
             let options = {
                 pythonPath: pythonpath,
                 scriptPath: `./script/`,
-                args: [`${func}`, `${method}`, `${att}`, `${id}`, `${key}`]
+                args: [`${func}`, `${method}`, `${att}`, `${id}`, `${key}`, `${JSON.stringify(passdata)}`]
             }
 
             var pyshell = new PythonShell('processing.py', options);
-
-            pyshell.send(JSON.stringify(passdata));
-
+            
             pyshell.on('message', function (message) {
                 // received a message sent from the Python script (a simple "print" statement)
+                // console.log('message', message)
                 message = message.replaceAll('None', 'null');
                 message = message.replaceAll('nan', 'null');
                 message = message.replaceAll('NaN', 'null');
@@ -3613,6 +3604,7 @@ app.post('/api/python/preprocessing/one', (req, res) => {
                 const returndata = message.map((obj, idx) => {
                     return Object.assign(data.data[idx], obj);
                 });
+                // console.log('returndata', returndata)
                 res.json({ result: returndata, info: dataframes_info_for_process(returndata) });
             });
 
@@ -3837,7 +3829,6 @@ app.post('/api/python/train', (req, res) => {
     const user = data.userid;
     const models = data.model;
 
-    console.log('data', data)
     // data { userid: 'admin', model: [ 'abc' ] }
 
     models.map((d, idx) => {

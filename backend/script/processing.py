@@ -1,4 +1,5 @@
-import sys,argparse,json, scipy, math, pandas as pd, numpy as np
+# -*- coding:utf-8 -*-
+import sys,argparse,json, base64, scipy, math, pandas as pd, numpy as np
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from sklearn import linear_model 
 from sklearn.decomposition import PCA
@@ -13,10 +14,7 @@ method = sys.argv[2]
 attribute = sys.argv[3]
 user_name = sys.argv[4]
 key = sys.argv[5]
-
-columns = input()
-
-# args  = parser.parse_args()
+columns = sys.argv[6]
 dir_preprocess = nowpath+'/.user/'+user_name+'/.data/.tmp'
 df1 = pd.DataFrame.from_dict(json.loads(columns))
 df1 = df1.set_index(keys=['date'], drop=True)
@@ -68,7 +66,7 @@ def InterpolUnivar(df,mth,order):
     '''
     Row-wise interpolation to NA values
     '''
-    if mth in ['spline','polynomial'] : df2 = df.interpolate(method=mth, order = order)   
+    if mth in ['spline','polynomial'] : df2 = df.interpolate(method=mth, order = int(order))
     else :df2 =  df.interpolate(method=mth)
     return  df2
 #
@@ -97,7 +95,7 @@ def Scaling(df,mth):
     scaler = getattr(preprocessing, mth)()
     df2 = pd.DataFrame(scaler.fit_transform(df), index = df.index, columns = df.columns)
     # 수정
-    scaler_save = f"{dir_preprocess}/{key}_{'-'.join(df.columns)}-.pkl"
+    scaler_save = f"{dir_preprocess}/{key}_{'-'.join(list(df.columns))}.pkl"
     with open(scaler_save, "wb") as f:
         pickle.dump(scaler.fit(df), f)
     return df2 
@@ -117,7 +115,6 @@ else: exec("df2 = %s(df1,'%s')"%(function, method))
 # exec("df2 = %s(df,'%s')"%('Scaling','MaxAbsScaler'))
 
 #프론트 반환
-print(json.dumps({'result':df2.to_dict('records')}, ensure_ascii=False ,separators=(',', ':')))
-
+print(json.dumps({'result':df2.to_dict('records')}, ensure_ascii=True ,separators=(',', ':')))
 
 
