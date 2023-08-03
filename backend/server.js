@@ -127,6 +127,21 @@ const makedfQuery = (data) => {
     return [regname, querys, allvars];
 }
 
+const maketreeQuery = (data) => {
+    const query = {};
+    data.map(d => {
+        const tmpd = d.split('__');
+        if (tmpd.length !== 4) query[tmpd[1] + "__" + tmpd[2]] = `SELECT * FROM ${d}`;
+        else if (tmpd[3] === "0") {
+            const subs = data.filter(d => d.includes(tmpd[1] + "__" + tmpd[2]));
+            var tmpquery = subs.join('; SELECT * FROM ');
+            tmpquery = 'SELECT * FROM ' + tmpquery + ';';
+            query[tmpd[1] + "__" + tmpd[2]] = tmpquery;
+        }
+    })
+    return query;
+}
+
 const getDates = (std, end) => {
 
     const dateArray = [];
@@ -362,7 +377,7 @@ const processEncode = (data) => {
     val.shift();
     val.shift();
     console.log('val', val)
-    val = val.map((item) => item.replace(/\(.*\)/g, ''));
+    val = val.map((item) => item.split('_')[0] + '_' + item.split('_')[1] + '_' + item.split('_')[2].replace(/\(.*\)/g, ''));
     const passdata = {};
     passdata['date'] = data.data.map(d => d.date);
     val.map(v => {
