@@ -127,21 +127,6 @@ const makedfQuery = (data) => {
     return [regname, querys, allvars];
 }
 
-const maketreeQuery = (data) => {
-    const query = {};
-    data.map(d => {
-        const tmpd = d.split('__');
-        if (tmpd.length !== 4) query[tmpd[1] + "__" + tmpd[2]] = `SELECT * FROM ${d}`;
-        else if (tmpd[3] === "0") {
-            const subs = data.filter(d => d.includes(tmpd[1] + "__" + tmpd[2]));
-            var tmpquery = subs.join('; SELECT * FROM ');
-            tmpquery = 'SELECT * FROM ' + tmpquery + ';';
-            query[tmpd[1] + "__" + tmpd[2]] = tmpquery;
-        }
-    })
-    return query;
-}
-
 const getDates = (std, end) => {
 
     const dateArray = [];
@@ -3466,8 +3451,7 @@ app.post('/api/dataframe', async(req, res) => {
     
     result['vals'] = regionName;
     result['dates'] = { 'start': data.stdate, 'end': data.eddate };
-    
-    const cleanedVars = querys[2].map((item) => item.replace(/\(.*\)/g, ''));
+    const cleanedVars = querys[2].map((item) => item.split('_')[0] + '_' + item.split('_')[1] + '_' + item.split('_')[2].replace(/\(.*\)/g, ''));
     result['allvars'] = cleanedVars;
 
     if(query.length === 1){
@@ -3508,16 +3492,15 @@ app.post('/api/dataframe', async(req, res) => {
             result[regionName[idx]] = row;
           }
     }
-    console.log('result', result)
+    // console.log('result', result)
     var realresult = dataframes(result);
 
     var info = dataframes_info(realresult, cleanedVars);
     if (!Array.isArray(info)) res.json({ error: `Data Error, 선택한 변수의 기간에 데이터가 없습니다. 기간 및 변수를 변경해주세요. Error Var : ${info.error}` })
     // // // var graph = datagraph(result);
     const uniqueList = regionName.filter((item, index) => regionName.indexOf(item) === index);
-    console.log('3518 realresult', realresult)
-    console.log('info', info)
-    console.log('uniqueList', uniqueList)
+    // console.log('3518 realresult', realresult)
+    // console.log('info', info)
     res.json({ info: info, data: realresult, vals: uniqueList });
     await connection.close();
 })
@@ -3611,7 +3594,7 @@ app.post('/api/python/preprocessing/one', (req, res) => {
             
             pyshell.on('message', function (message) {
                 // received a message sent from the Python script (a simple "print" statement)
-                console.log('message', message)
+                // console.log('message', message)
                 message = message.replaceAll('None', 'null');
                 message = message.replaceAll('nan', 'null');
                 message = message.replaceAll('NaN', 'null');
@@ -3621,7 +3604,7 @@ app.post('/api/python/preprocessing/one', (req, res) => {
                 const returndata = message.map((obj, idx) => {
                     return Object.assign(data.data[idx], obj);
                 });
-                console.log('returndata', returndata)
+                // console.log('returndata', returndata)
                 res.json({ result: returndata, info: dataframes_info_for_process(returndata) });
             });
 

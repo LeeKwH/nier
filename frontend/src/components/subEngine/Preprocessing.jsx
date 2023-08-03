@@ -59,14 +59,14 @@ export default function Preprocessing() {
     const [uniqKey, setUniqKey] = useState(0);
 
     const makeSelectVal = (checks) => {
-        
         let valtmp = [...proselectval];
+        console.log('64 valtmp', valtmp)
         checks.map((c, idx) => {
             if (!c) {
-                const taget = `${region[idx][2]}_${region[idx][4]}_${region[idx][6]}`;
+                const taget = `${region[idx][2]}_${region[idx][4]}_${region[idx][6].replace(/\(.*\)/g, '')}`;
                 if (proselectval.includes(taget)) valtmp = valtmp.filter((v) => v !== taget);
             } else {
-                const taget = `${region[idx][2]}_${region[idx][4]}_${region[idx][6]}`;
+                const taget = `${region[idx][2]}_${region[idx][4]}_${region[idx][6].replace(/\(.*\)/g, '')}`;
                 if (!proselectval.includes(taget)) valtmp.push(taget);
             }
         })
@@ -87,9 +87,10 @@ export default function Preprocessing() {
 
     const handleCheckAll = (event) => {
         let tmp = Array(region.length).fill(event.target.checked);
-        console.log(region)
+        console.log('90 tmp', tmp)
         if (event.target.checked) {
             let tmpregion = region.map(d => `${d[2]}_${d[4]}_${d[6].replace(/\(.*\)/g, '')}`);
+            console.log('93 tmpregion', tmpregion)
             setProselectval(tmpregion);
         }
         else setProselectval([]);
@@ -116,11 +117,7 @@ export default function Preprocessing() {
             const func = selectedIdx.split('-')[0];
             const method = selectedIdx.split('-')[1];
             const tmpatt = descript[func][method];
-            console.log('func', func)
-            console.log('method', method)
-            console.log('tmpatt', tmpatt)
-            console.log('att', att)
-            console.log('proselectval', proselectval)
+
             if (tmpatt !== "" && att === "") {
                 if (tmpatt === "column") setAtt(proselectval[0]);
                 else setAtt("1");
@@ -153,7 +150,7 @@ export default function Preprocessing() {
                     return;
                 }
             }
-            const historyAtt = func === "InterpolUnivar" && (method !== "spline" || method !== "polynomial") ? "0" : att;
+            const historyAtt = func === "InterpolUnivar" && (method !== "spline" && method !== "polynomial") ? "0" : att;
             console.log('selectedIdx', selectedIdx)
             console.log('historyAtt', historyAtt)
             console.log('...proselectval', ...proselectval)

@@ -66,7 +66,7 @@ def InterpolUnivar(df,mth,order):
     '''
     Row-wise interpolation to NA values
     '''
-    if mth in ['spline','polynomial'] : df2 = df.interpolate(method=mth, order = order)   
+    if mth in ['spline','polynomial'] : df2 = df.interpolate(method=mth, order = int(order))
     else :df2 =  df.interpolate(method=mth)
     return  df2
 #
