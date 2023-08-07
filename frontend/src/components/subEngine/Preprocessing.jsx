@@ -362,7 +362,7 @@ export default function Preprocessing() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id: cookies.id, key: uniqKey, data: rows, datainfo: JSON.stringify(region), pre: history })
+                body: JSON.stringify({ id: cookies.id, key: uniqKey, data: rows, datainfo: JSON.stringify(region.map(row=> [row[0], row[2], row[4], row[6].replace(/\(.*\)/g, '')])), pre: history })
             })
                 .then(response => response.json())
                 .then(response => {

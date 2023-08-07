@@ -3640,10 +3640,10 @@ app.post('/api/datasave/:name/:isf', (req, res) => { // Dataset 저장 api
     const username = data.id;
     const savedata = data.data;
     const info = data.datainfo;
+    // info = info.map(row => [row[0], row[2], row[4], row[6]])
     const pre = data.pre;
     const key = data.key;
     const isf = Boolean(Number(req.params.isf));
-
     // if(!isf&&fs.existsSync(`./.user/${username}/.data/${req.params.name}.csv`)){
     if (!isf && fs.existsSync(`./.user/${username}/.data/${req.params.name}`)) {
         res.json({ error: 'exist' });
@@ -3960,7 +3960,6 @@ app.post('/api/python/yresult', (req, res) => { // 학습 결과 return
                                 d = d.replaceAll('Infinity', '999999');
                                 d = JSON.parse(d);
                                 const passdatas = PassYresult(d);
-                                console.log(passdatas);
                                 res.json(passdatas)
                             }
                         })
