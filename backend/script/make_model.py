@@ -171,7 +171,7 @@ with open(dir_script+args.model_name+'.py', 'w') as f:
         f.write('        return out_%d\n'%min(mer['list_cols']))
     else:
         f.write('        return out_%d\n'%list_cols[0][0]['coord'][1])
-
+os.makedirs(nowpath+'/.share/.notebook/'+args.user_name+'/Models/', exist_ok=True)
 shutil.copyfile(dir_script+args.model_name+'.py',nowpath+'/.share/.notebook/'+args.user_name+'/Models/'+args.model_name+'.py')
 
 print('Script saved in %s'%dir_script,end='')
