@@ -86,27 +86,49 @@ export default function Database() {
     const [searchSelect, setSearchSelect] = useState('지역명');
     const [map, setMap] = useState();
 
-    useEffect(() => {
-        // console.log('ShowSelected 변경됨:', ShowSelected);
-        // setdbSelectData(ShowSelected);
-
-        function filterDataByKeys(list, targetKeys, result = []) {
-            for (const item of list) {
-                if (targetKeys.includes(item.value)) {
-                    const newItem = { ...item, label: getModifiedLabel(item)};
-                    if (item.children && item.children.length > 0) {
-                        newItem.children = filterDataByKeys(item.children, targetKeys);
-                        newItem.label =  getModifiedLabel(item)
-                    }
-                    result.push(newItem);
-                }
-            }
-            return result;
+    const getModifiedLabel = (node) => {
+        const hasIconButton = /<IconButton[^>]*>.*<\/IconButton>/.test(node.label);
+        if (hasIconButton) {
+            return (
+                <>
+                    {node.label}
+                </>
+            );
+        } else {
+            return (
+                <>
+                    {node.label}
+                    <IconButton size="small" onClick={e => handleRemoveBtn(node.value)}>
+                        <DeleteRoundedIcon fontSize="small" />
+                    </IconButton>
+                </>
+            );
         }
-        const select_tree = filterDataByKeys(dbData, ShowSelected)
-        setdbSelectData(select_tree)
-        console.log('select_tree', select_tree)
-    }, [ShowSelected]);
+    };
+
+    useEffect(()=>{
+        let tmpdb = JSON.parse(JSON.stringify(defaultSelectData));
+        function filterDataByKeys(list, targetKeys) {
+            for (let i = list.length - 1; i >= 0; i--) {
+                const data = list[i];
+                if (targetKeys.includes(data.value)) {
+                    list[i] = {
+                        ...data,
+                        label: getModifiedLabel(data)
+                    };
+                    
+                    if (data.children && data.children.length > 0) {
+                        list[i].children = filterDataByKeys(data.children, targetKeys);
+                    }
+                } else {
+                    list.splice(i, 1);
+                }
+            }    
+            return list;
+        }
+        const select_tree = filterDataByKeys(tmpdb, ShowSelected)
+        setdbSelectData(select_tree);
+    },[ShowSelected])
 
     useEffect(() => {
         setIsdefaultLoading(true);
@@ -115,12 +137,12 @@ export default function Database() {
                 return res.json();
             })
             .then(data => {
-                const origin = data
-                console.log('origin', origin)
+                const origin = data.origin;
+                const selecteddb = data.select;
                 setdbData(origin);
                 setdefaultData(origin);
-                setdbSelectData([]);
-                setdefaultSelectData([]);
+                setdbSelectData(selecteddb);
+                setdefaultSelectData(selecteddb);
                 setIsdefaultLoading(false);
             })
     }, [])
@@ -262,20 +284,10 @@ export default function Database() {
             return result;
         }
         const ParentList = getParentKeysWithValue(dbData, selected)
-        console.log('ParentList', ParentList)
         return ParentList;
     }
 
-    const getModifiedLabel = (node) => {
-        return (
-            <>
-                <>{node.label}</>
-                <IconButton size="small" onClick={e=>handleRemoveBtn(node.value)}>
-                    <DeleteRoundedIcon fontSize="small" />
-                </IconButton>
-            </>
-        );
-    };
+    
 
     const handleRemoveBtn = (value) => {
         let tmplist = ShowSelected.filter(data => data !== value);
@@ -333,15 +345,12 @@ export default function Database() {
                     }
                     else {
                         setdbData(data);
-                        // console.log(data)
                     }
                 })
         }
     }
 
     const handleLabelClick = (e) => {
-        console.log('라벨 클릭')
-        console.log('e', e)
         const id = e.value;
         const validIdFormat_1 = /^[a-zA-Z가-힣]{1,3}_[a-zA-Z0-9]+_[a-zA-Z0-9]+$/;
         const validIdFormat_2 = /^[a-zA-Z가-힣]{1,3}_[a-zA-Z0-9]+_[a-zA-Z0-9]+_[a-zA-Z0-9]+$/;
@@ -351,20 +360,28 @@ export default function Database() {
             return; // Exit the function early
         }
         const label = e.label;
-        console.log('label', label)
         setIsvalLoading(true);
         setShowKind(id.split('_')[0])
         setShowRegion(id.split('_')[1])
-        setShowValNM(label)
+        if (typeof label === 'string') {
+            setShowValNM(label)
+        } else {
+            setShowValNM(label.props.children[0])
+        }
         if (id.split('_').length >= 4) {
             setShowVal(id.split('_').slice(2).join('_'))
         } else {
             setShowVal(id.split('_')[2])
         }
+        if (typeof label === 'string') {
+            setShowChartRegion(e.parent.label)
+        } else {
+            setShowChartRegion(e.parent.label.props.children[0])
+        }
         
-        setShowChartRegion(e.parent.label)
         
     }
+
     return (
         <div className="database-page" style={{ height: '100%' }}>
             <CssBaseline />
