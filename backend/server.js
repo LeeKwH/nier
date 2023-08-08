@@ -699,7 +699,7 @@ app.get('/api/tree/com_code', async (req, res) => {
         FROM V_WRSSM_SEARCH
         START WITH UPPER_CODE = '0'
         CONNECT BY PRIOR CODE = UPPER_CODE
-        ORDER BY SORT`
+        ORDER BY LV, SORT`
         // 쿼리 실행
         const result = await connection.execute(sql);
 
@@ -817,7 +817,10 @@ app.get('/api/tree/com_code', async (req, res) => {
         }
         // 수질
         //  - 한강
+        console.log('820 한강', nodes[0].children)
         parentNodeList[0].children[0].children = nodes[0].children
+        
+        console.log('822 낙동강', nodes[1].children)
         //  - 낙동강
         parentNodeList[1].children[0].children = nodes[1].children
         //  - 금강
@@ -3347,8 +3350,21 @@ app.get('/api/tree/com_code', async (req, res) => {
         parentNodeList[2].children[5].children = r03_swmn
         parentNodeList[3].children[5].children = r04_swmn
 
+        function addShowCheckboxRecursive(obj) {
+            const newObj = { ...obj, showCheckbox: false }; // 새로운 객체 생성과 속성 추가
+          
+            if (newObj.children && newObj.children.length > 0) {
+              // 자식 객체들에도 속성 추가
+              newObj.children = newObj.children.map(child => addShowCheckboxRecursive(child));
+            }
+          
+            return newObj;
+        }
 
-        res.json(parentNodeList);
+        const updatedRiverData = parentNodeList.map(river => addShowCheckboxRecursive(river));
+
+        // console.log('3350', updatedRiverData)
+        res.json({origin: parentNodeList, select: updatedRiverData});
         await connection.close()
     } catch (error) {
         console.error('Error executing query:', error);
