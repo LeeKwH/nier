@@ -1,35 +1,29 @@
-import argparse, sys, os,json,pickle,copy, pandas as pd, numpy as np, shutil
-from list_lr import *
+import json, copy, sys, os
+
 sys.path.append('./')
 nowpath = os.getcwd()
 
-parser = argparse.ArgumentParser()
-parser.add_argument('user_name', type=str)
-parser.add_argument('model_name', type=str)
-args = parser.parse_args()
+user_name = sys.argv[1]
+model_name = sys.argv[2]
 
-dir_script = nowpath+'/.user/'+args.user_name+'/.model/'+args.model_name +'/' 
-dir_model_input = nowpath+'/.user/'+args.user_name+'/.model/'+args.model_name+'/first_cols.pkl'
+dir_script = f'{nowpath}/.user/{user_name}/.model/{model_name}/'
+modelinfo = json.load(open(dir_script+'modelinfo.json', encoding='UTF8'))
 
-#generating list_cols and list_mers
-###################################################################################################################################################################################################################################################################
-jsondic = json.load(open(dir_script+'modelinfo.json', encoding='UTF8'))
-seqshf = jsondic['seqshf']
+seqshf = modelinfo['seqshf']
 Inseq = seqshf['Input Sequence']
 Outseq = seqshf['Output Sequence']
 Inshift = seqshf['Input Shift']
 Outshift = seqshf['Output Shift']
 
+input = modelinfo['variable']['1']
+outs = modelinfo['variable']['out']
 
-outs = jsondic['variable']['out']
-
-jsonlink = jsondic['link']
-jsonmodel = jsondic['model']
-jsoncolrow = {x[2]:[x[1],x[0]] for x in jsondic['colrow']}
+jsonlink = modelinfo['link']
+jsonmodel = modelinfo['model']
+jsoncolrow = {x[2]:[x[1],x[0]] for x in modelinfo['colrow']}
 deep_link = copy.deepcopy(jsonlink)
 cols = {}
 mers = {}
-
 
 for link in jsonlink:
     if 'input' in link['source']:
@@ -43,7 +37,7 @@ jsonlink = deep_link
 
 for key in mers.keys():
     for source in mers[key]['following_sequential']:
-        for link in jsondic['link']:
+        for link in modelinfo['link']:
             if source == link['source'] and 'Merge' not in link['target']:
                 mers[key]['following_sequential'].append(link['target'])
                 deep_link.remove(link)
@@ -59,15 +53,26 @@ for key in cols.keys():
     for layer in cols[key]:
         for model in jsonmodel:
             if layer == model['newc']:
-                att = ''
-                for k,v in model['data'].items():
-                    # if(jsoncolrow[layer][0] == len(jsoncolrow.keys()) and (k=='out_channels' or k=='output_size' or k=='out_size' or k=='out_features')):
-                        # att += k + '=' + str(int(v)*Outseq) + ','
-                    # else:
-                        att += k + '=' + str(v) + ',' if isinstance(v, int) or isinstance(v, float) or v in ['True', 'False'] else k + '=' + "'" + v + "'" + ','
-                layerlist.append({'type':model['type'],'coord':jsoncolrow[layer],'attributes':att})
+                arg = model['data']
+                for k,v in arg.items():
+                    if v == 'True' : arg[k] = True
+                    elif v == 'False' : arg[k] = False
+                layerlist.append({'type':model['type'],'coord':jsoncolrow[layer],'arg':arg})
 
     cols[key] = sorted(layerlist, key=lambda x: x['coord'][0])
+
+    for idx,target in enumerate(cols[key]):
+        args = list(target['arg'].keys())
+        outre = [s for s in args if s in ['out_features','out_channels','hidden_size']]
+        if idx == 0:
+            target['in'] = -1
+        else:
+            target['in'] = cols[key][idx-1]['out']
+        if outre:
+            outarg = outre[0]
+            target['out'] = target['arg'][outarg]
+        else:
+            target['out'] = target['in']
 
 for key in mers.keys():
     mers[key]['row'] = jsoncolrow[key][0]
@@ -77,101 +82,27 @@ for key in mers.keys():
             if model['newc'] == key:
                 mers[key]['list_cols'] = model['merge']
             if layer == model['newc']:
-                att = ''
-                for k,v in model['data'].items():
-                    att += k + '=' + str(v) + ',' if isinstance(v, int) or isinstance(v, float) or v in ['True', 'False'] else k + '=' + "'" + v + "'" + ','
-                layerlist.append({'type':model['type'],'coord':jsoncolrow[layer],'attributes':att})
+                arg = model['data']
+                for k,v in arg.items():
+                    if v == 'True' : arg[k] = True
+                    elif v == 'False' : arg[k] = False
+                layerlist.append({'type':model['type'],'coord':jsoncolrow[layer],'arg':arg})
     mers[key]['following_sequential'] = sorted(layerlist, key=lambda x: x['coord'][0])
 
-list_cols = list(cols.values())
-list_mers = list(mers.values())
-# print(list_cols)
+    for idx,target in enumerate(mers[key]['following_sequential']):
+        args = list(target['arg'].keys())
+        outre = [s for s in args if s in ['out_features','out_channels','hidden_size']]
+        if idx == 0:
+            target['in'] = len(mers[key]['list_cols'])*Outseq
+        else:
+            target['in'] = mers[key]['following_sequential'][idx-1]['out']
+        if outre:
+            outarg = outre[0]
+            target['out'] = target['arg'][outarg]
+        else:
+            target['out'] = target['in']
 
-first_cols = []
-for col in list_cols: first_cols.append(col[0]['type'])
-with open(dir_model_input, 'wb') as f:
-    pickle.dump(first_cols, f)
-# Writing a script 
-###################################################################################################################################################################################################################################################################
-with open(dir_script+args.model_name+'.py', 'w') as f:
-    f.write('import torch\n') 
-    f.write('import torch.nn as nn\n\n')  
-    f.write(f'class {args.model_name}(nn.Module):\n')
-    f.write('    def __init__(self,list_inps):\n')
-    f.write(f'        super({args.model_name}, self).__init__()\n')
-    for i in range(0,len(list_cols)):#한컬럼
-        if(list_cols[i][0]['type'] not in list_lr_order): input_order = 1 #첫줄 인풋셰이프순서
-        else: input_order = 2
-        f.write('        inp = list_inps[%d].size(%d)\n'%(i,input_order))
-        f.write('        self.seq_col%d = nn.Sequential(\n'%list_cols[i][0]['coord'][1])
-        tmpinp = "inp" # last inp size
-        for (idx,row) in enumerate(list_cols[i]):#한줄
-            if(row['type'] in list_lr_feature):#피쳐수 필요 레이어
-                tmpinp = list_cols[i][idx-1]['attributes'].split(',')[0].split('=')[-1]
-                if(idx == 0): 
-                    f.write('        nn.%s(inp, %s),\n'%(row['type'], row['attributes']))#첫층
-
-                elif(list_cols[i][idx-1]['type'] == 'LSTM'): # before layer lstm
-                    if(row['type'] in list_lr_order): # now layer in list_lr_order
-                        f.write('        GetToLSTMOutput(),\n')
-                        f.write('        nn.%s(%s, %s),\n'%(row['type'],tmpinp, row['attributes'])) #이전아웃풋->현재인풋
-                    else:
-                        f.write('        extract_tensor(),\n')
-                        f.write('        nn.Lazy%s(%s),\n'%(row['type'], row['attributes']))
-                elif(list_cols[i][idx-1]['type'] in list_lr_dim):
-                    f.write('        nn.Lazy%s(%s),\n'%(row['type'], row['attributes'])) #이전층 flatten이면
-                else: #이전아웃풋->현재인풋
-                    f.write('        nn.%s(%s, %s),\n'%(row['type'],tmpinp, row['attributes'])) #이전아웃풋->현재인풋
-                if(len(list_cols[i])-1 == idx and row['type'] == 'LSTM'):
-                    f.write('        extract_tensor(),\n')
-
-                # if(row['type'] in list_lr_order): f.write('        extract_tensor(),\n')#lstm류 나올때마다 followed by an extractor lr 
-            
-            else:
-                f.write('        nn.%s(%s),\n'%(row['type'], row['attributes']))#피쳐수 불필요 레이어 
-        f.write('        nn.LazyLinear(out_features=%s, bias=True),\n'%(len(outs)*Outseq))
-        f.write(')\n')
-    for i in range(len(list_cols)):
-        f.write('        out_%d = self.seq_col%d(list_inps[%d])\n'%(list_cols[i][0]['coord'][1],list_cols[i][0]['coord'][1],i))
-    f.write('\n')    
-    if len(list_mers) > 0:
-        for mer in list_mers:#한컬럼
-            merge_code = 'out = torch.cat(('
-            for col in mer['list_cols']:
-                merge_code = merge_code +'out_%d,'%col
-            f.write('        %s),1)\n'%merge_code)
-            f.write('        self.seq_col%d_row%d = nn.Sequential(\n'%(min(mer['list_cols']),mer['row']))
-            for (idx,row) in enumerate(mer['following_sequential']):#한줄
-                if(row['type'] in list_lr_feature):#피쳐수 필요 레이어  
-                    if(row['type'] in list_lr_order_trans): 
-                        input_order = 1#인풋셰이프순서
-                        f.write('        transpose_tensor(),\n')
-                    else: input_order = 2    
-                    if(idx == 0): f.write('        nn.%s(in_features = out.size(%d),%s),\n'%(row['type'],input_order, row['attributes'])) #첫층
-                    else: f.write('        nn.%s(%s,%s),\n'%(row['type'],mer['following_sequential'][idx-1]['attributes'].split(',')[0].replace('out','in'),row['attributes'])) #이전아웃풋->현재인풋
-                # if(row['type'] in list_lr_order): f.write('        extract_tensor(),\n')#lstm류 나올때마다 followed by an extractor lr 
-                else: f.write('        nn.%s(%s),\n'%(row['type'], row['attributes']))#피쳐수 불필요 레이어    
-            f.write('        nn.LazyLinear(out_features=%s, bias=True),\n'%(len(outs)*Outseq))    
-            f.write(')\n')
-            f.write('        out_%d = self.seq_col%d_row%d(out)\n\n'%(min(mer['list_cols']),min(mer['list_cols']),mer['row']))#merge후아웃풋
-    f.write('\n\n')
-####################################################################################################################################    
-    f.write('    def forward(self, list_inps):\n')
-    for i in range(0,len(list_cols)):
-        f.write('        out_%d = self.seq_col%d(list_inps[%d])\n'%(list_cols[i][0]['coord'][1],list_cols[i][0]['coord'][1],i))#input_formatter
-    f.write('\n\n')
-    if len(list_mers) > 0:    
-        for mer in list_mers:
-            merge_code = 'out_%d = torch.cat(('%min(mer['list_cols'])
-            for col in mer['list_cols']:
-                merge_code = merge_code +'out_%d,'%col
-            f.write('        %s),1)\n'%merge_code)
-            f.write('        out_%d = self.seq_col%d_row%d(out_%d)\n'%(min(mer['list_cols']),min(mer['list_cols']),mer['row'],min(mer['list_cols'])))
-    if len(list_mers) > 0:
-        f.write('        return out_%d\n'%min(mer['list_cols']))
-    else:
-        f.write('        return out_%d\n'%list_cols[0][0]['coord'][1])
-os.makedirs(nowpath+'/.share/.notebook/'+args.user_name+'/Models/', exist_ok=True)
-shutil.copyfile(dir_script+args.model_name+'.py',nowpath+'/.share/.notebook/'+args.user_name+'/Models/'+args.model_name+'.py')
+with open(f'{dir_script}layerinfo.json','w',encoding='utf-8') as f:
+    json.dump({'cols':cols,'mers':mers},f)
 
 print('Script saved in %s'%dir_script,end='')

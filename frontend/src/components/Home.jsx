@@ -113,6 +113,7 @@ export default function Home(){
         .then(res => res.json())
         .then(data => {
             if(data.hasOwnProperty('error')){
+                
                 console.log(data.error);
             }else{
                 let temptmp = [...gpudata.temp];
@@ -156,7 +157,10 @@ export default function Home(){
         fetch('/api/share/modellist')
         .then(res => res.json())
         .then(data => {
-            if(data.hasOwnProperty('error')) alert('Error: '+data.error);
+            if(data.hasOwnProperty('error')){
+                alert('여기 에러');
+                alert('Error: '+data.error);
+            } 
             else {
                 const models = Object.keys(data).sort((a,b)=>a.localeCompare(b));
                 if(models.length!==0){

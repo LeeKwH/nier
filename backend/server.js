@@ -72,7 +72,7 @@ const makedfQuery = (data) => {
         k = key.split('_')[0]
         r = key.split('_')[1]
         let sql = ''
-        console.log('vals', vals)
+        // console.log('vals', vals)
         if (k == '수질'){
             const table = 'V_MSR_WQMN_DAY'
             sql = `
@@ -191,7 +191,6 @@ const getDates = (std, end) => {
  * @returns Object for Preprocessing Data
  */
 const dataframes = (data) => {
-    console.log('data', data)
     const result = {};
     const realresult = [];
     const regs = data.vals
@@ -199,7 +198,6 @@ const dataframes = (data) => {
     const edd = data.dates.end;
     const alldates = getDates(std, edd);
     const allvars = data.allvars;
-    console.log('202 allvars', allvars)
     const nulls = [];
     regs.map((r) => {
         if (data[r].length === 0) {
@@ -214,7 +212,6 @@ const dataframes = (data) => {
                     tmpdata[`${v}`] = d[v];
                 }
             });
-            console.log('tmpdata', tmpdata)
             if (!result.hasOwnProperty(d['일시'])) {
                 result[d['일시']] = tmpdata;
             } else {
@@ -372,11 +369,8 @@ const dataframes_info_for_process = (data) => { // obs : 관측 데이터, nan :
  */
 const processEncode = (data) => {
     let val = [...data.request];
-    console.log('data', data)
-    console.log('val', val)
     val.shift();
     val.shift();
-    console.log('val', val)
     val = val.map((item) => item.split('_')[0] + '_' + item.split('_')[1] + '_' + item.split('_')[2].replace(/\(.*\)/g, ''));
     const passdata = {};
     passdata['date'] = data.data.map(d => d.date);
@@ -428,20 +422,21 @@ const forecastData = (data) => {
     let tmpTresult = {};
     let Gresult = [];
     let Dates = [];
-
+    console.log('425 data', data)
     data.map(d => {
         const model = d.model;
         const vars = Object.keys(d.data['forecast_yhat']);
+        console.log('429', vars)
         vars.map(v => {
             const dates = Object.keys(d.data['forecast_yhat'][v]);
             Dates = [...dates];
             const tmpvar = v.split('_').at(-1);
             dates.map(date => {
                 if (!tmpTresult[date]) tmpTresult[date] = {};
-                if (!tmpTresult[date][`${model}_${tmpvar}`]) tmpTresult[date][`${model}_${tmpvar}`] = d.data['forecast_yhat'][v][date];
+                if (!tmpTresult[date][`${v}`]) tmpTresult[date][`${v}`] = d.data['forecast_yhat'][v][date];
             })
             Gresult.push([{
-                label: `${model}_${tmpvar}_predict`,
+                label: `${v}_predict`,
                 data: Object.values(d.data['forecast_yhat'][v]),
                 type: 'line',
                 borderColor: 'rgb(250, 0, 0)',
@@ -450,8 +445,8 @@ const forecastData = (data) => {
                 pointRadius: 0.2,
             },
             {
-                label: `${model}_y`,
-                data: Object.values(d.data['forecast_y'][v.split('(')[0]]),
+                label:`${v}_y`,
+                data:Object.values(d.data['forecast_y'][v]),
                 type: 'line',
                 borderColor: 'rgb(0, 0, 0)',
                 backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -817,10 +812,7 @@ app.get('/api/tree/com_code', async (req, res) => {
         }
         // 수질
         //  - 한강
-        console.log('820 한강', nodes[0].children)
         parentNodeList[0].children[0].children = nodes[0].children
-        
-        console.log('822 낙동강', nodes[1].children)
         //  - 낙동강
         parentNodeList[1].children[0].children = nodes[1].children
         //  - 금강
@@ -3448,7 +3440,6 @@ app.get('/api/chartdata/:val/:kind/:region/:st/:ed', async (req, res) => {
     } 
     
     const result = await connection.execute(sql)
-    console.log('result :', result)
     const numall = result.rows.length;
     const numok = result.rows.filter(raw => raw[1]).length;
     const numnan = numall - numok;
@@ -3553,7 +3544,6 @@ app.post('/api/python/preprocessing/one', (req, res) => {
     const id = data.id;
     const key = data.key;
 
-    console.log('passdata', passdata)
     // Drop Nan
     if (method === 'any') {
         let result = data.data;
@@ -3719,7 +3709,6 @@ app.get('/api/region/:regions', (req, res) => { // frontend Data>Database 지도
         if (err) {
             res.json({ error: 'no data' })
         } else {
-            console.log(result.rows[0][region], result.rows[1][region])
             res.json({ lat: Number(result.rows[0][region]), lon: Number(result.rows[1][region]) });
         }
     })
@@ -3765,34 +3754,28 @@ app.post('/api/python/models/:isf', (req, res) => {
             if (err) res.json({ error: err });
         })
 
-        // ref (가이던스 모델)
-        if (data.hasOwnProperty('isref')) {
-            fs.writeFile(`./.user/${username}/.model/${projectName}/isref.config`, ' ', (err) => {
-                if (err) res.json({ error: err });
-                else res.json({ result: 'success' });
-            })
-        } else {
-            // non-ref
-            //data 파이썬 넘겨주기
-            const result = spawn(pythonpath, ['./script/make_model.py', [username], [projectName]]);
-            result.stdout.on('data', function (d) {
-                d = iconv.decode(d, 'euc-kr');
-                console.log(d.toString());
-                res.json({ result: 'success' });
-            });
-            result.stderr.on('data', function (d) {
-                d = iconv.decode(d, 'euc-kr');
-                console.log(d.toString());
-                fs.rmSync(`./.user/${username}/.model/${projectName}`, { recursive: true });
-                res.json({ error: d.toString() });
-            });
-
+        let options = {
+            pythonPath: pythonpath,
+            scriptPath: `./script/`,
+            args: [`${username}`,`${projectName}`]
         }
-
-
-
+        var pyshell = new PythonShell('make_model.py',options);
+        pyshell.on('message', function (message) {
+            // received a message sent from the Python script (a simple "print" statement)
+            message = message.replaceAll('None','null');
+            message = message.replaceAll('nan','null');
+            message = message.replaceAll('NaN','null');
+            message = message.replaceAll('Infinity','999999');
+            res.json({result:'success'});
+        });
+        pyshell.end(function (err) {
+            if (err){
+                console.log(err);
+                fs.rmSync(`./.user/${username}/.model/${projectName}`,{recursive:true});
+                res.json({error:err});
+            };
+        });
     }
-
 })
 
 // user list
@@ -3868,236 +3851,136 @@ app.post('/api/python/train', (req, res) => {
             else { console.log('saved.'); }
         })
 
-        // ref (가이던스 모델)
-        if (fs.existsSync(`./.user/${user}/.model/${d}/isref.config`)) {
-            fs.writeFile(`./.user/${user}/.model/${d}/log.txt`, ' ', (err) => {
-                if (err) console.log(err);
-            })
-            let options = {
-                pythonPath: pythonpathforattn,
-                scriptPath: './script/attn/',
-                args: [user, d],
-                encoding: 'utf8',
-            }
-            let pyshell = new PythonShell('attn.py', options);
-            pyshell.on('message', function (message) {
-                console.log(message);
-            })
-            pyshell.end(function (err) {
-                if (err) {
-                    console.log(err);
-                    // if(!err.includes('Warning')&&!err.includes('warning'))
-                    // {
-                    fs.writeFile(`./.user/${user}/.model/${d}/status.config`, 'error', (err) => {
-                        if (err) console.log(err);
-                        else { console.log('err.'); }
-                    })
-                    // }
-                }
-            })
-        }
-
-        // non-ref
-        else {
-            const result = spawn(pythonpath, ['./script/training.py', [user], [d]]);
-            result.stdout.on('data', function (d) {
-                d = iconv.decode(d, 'euc-kr');
-                console.log(d.toString());
-
-            });
-            result.stderr.on('data', function (data) {
-                console.log(data.toString());
-                fs.writeFile(`./.user/${user}/.model/${d}/status.config`, 'error', (err) => {
-                    if (err) console.log(err);
-                    else { console.log('saved.'); }
-                })
-            });
-        }
-    })
-})
-
-app.post('/api/python/plot', (req, res) => { // log 저장
-    const data = req.body;
-    const user = data.userid;
-    const model = data.model;
-    if (fs.existsSync(`./.user/${user}/.model/${model}/log.txt`)) {
-        fs.readFile(`./.user/${user}/.model/${model}/log.txt`, 'utf8', (err, data) => {
-            if (err) console.log(err);
-            // if(err) res.json({error:err});
-            else {
-
-                let loss = [];
-                let valloss = [];
-                let forrefData = '';
-                const splitData = data.split('\r\n')
-                splitData.pop()
-                splitData.shift()
-                splitData.map((d, idx) => {
-                    let ds = d.split(',');
-                    const pushloss = fs.existsSync(`./.user/${user}/.model/${model}/isref.config`) ? Number(ds[2]) : Number(ds[1].split(':').at(-1));
-                    const pushvalloss = fs.existsSync(`./.user/${user}/.model/${model}/isref.config`) ? Number(ds[6]) : Number(ds[2].split(':').at(-1));
-                    loss.push(pushloss);
-                    valloss.push(pushvalloss);
-                    forrefData = forrefData + `Epoch : ${idx}, Train loss : ${pushloss}, Val loss : ${pushvalloss}\r\n`;
-
-                });
-                fs.existsSync(`./.user/${user}/.model/${model}/isref.config`) ? res.json({ data: forrefData, loss: loss, valloss: valloss }) : res.json({ data: data, loss: loss, valloss: valloss });
-                // res.json({data:data});
-            }
-        })
-    } else {
-        res.json({ error: 'no log file' })
-    }
-})
-
-app.post('/api/python/yresult', (req, res) => { // 학습 결과 return
-    const data = req.body;
-    const user = data.userid;
-    const model = data.model;
-
-    // ref (가이던스 모델의 경우, 학습 시 결과 파일까지 도출함. 파일 읽고 전달만)
-    if (fs.existsSync(`./.user/${user}/.model/${model}/isref.config`)) {
-        if (fs.existsSync(`./.user/${user}/.model/${model}/calresult.json`)) {
-            fs.readFile(`./.user/${user}/.model/${model}/calresult.json`, 'utf8', (err, data) => {
-                if (err) res.json({ error: err });
-                else {
-                    data = data.replaceAll('None', 'null');
-                    data = data.replaceAll('nan', 'null');
-                    data = data.replaceAll('NaN', 'null');
-                    data = data.replaceAll('Infinity', '999999');
-                    data = JSON.parse(data);
-                    if (fs.existsSync(`./.user/${user}/.model/${model}/testresult.json`)) {
-                        fs.readFile(`./.user/${user}/.model/${model}/testresult.json`, 'utf8', (err, d) => {
-                            if (err) res.json({ error: err });
-                            else {
-                                d = d.replaceAll('None', 'null');
-                                d = d.replaceAll('nan', 'null');
-                                d = d.replaceAll('NaN', 'null');
-                                d = d.replaceAll('Infinity', '999999');
-                                d = JSON.parse(d);
-                                const passdatas = PassYresult(d);
-                                res.json(passdatas)
-                            }
-                        })
-                    }
-                }
-            })
-        }
-
-    }
-
-    // non-ref
-    else {
         let options = {
             pythonPath: pythonpath,
             scriptPath: `./script/`,
-            args: [`${user}`, `${model}`],
-            encoding: 'utf8'
+            args: [`${user}`,`${d}`]
         }
 
-        var pyshell = new PythonShell('test_result.py', options);
-
+        var pyshell = new PythonShell('training.py',options);
         pyshell.on('message', function (message) {
             // received a message sent from the Python script (a simple "print" statement)
-            message = message.replaceAll('None', 'null');
-            message = message.replaceAll('nan', 'null');
-            message = message.replaceAll('NaN', 'null');
-            message = message.replaceAll('infinity', '999999');
-            const d = JSON.parse(message);
-            const passdatas = PassYresult(d);
-            if (!fs.existsSync(`./.user/${user}/.model/${model}/calresult.json`)) {
-                fs.writeFileSync(`./.user/${user}/.model/${model}/calresult.json`, JSON.stringify({ MAPE: d['MAPE'], RMSLE: d['RMSLE'], Cos_sim: d['Cos_sim'] }));
-            } else {
-                fs.readFile(`./.user/${user}/.model/${model}/calresult.json`, 'utf8', (err, data) => {
-                    if (err) console.log(err);
-                    else {
-                        const calresult = JSON.parse(data);
-                        if (calresult['MAPE'] != d['MAPE'] || calresult['RMSLE'] != d['RMSLE'] || calresult['Cos_sim'] != d['Cos_sim']) {
-                            fs.writeFileSync(`./.user/${user}/.model/${model}/calresult.json`, JSON.stringify({ MAPE: d['MAPE'], RMSLE: d['RMSLE'], Cos_sim: d['Cos_sim'] }));
-                        }
-                    }
-                })
-            }
-            console.log(passdatas)
-            res.json({ ...passdatas, ...{ MAPE: d['MAPE'], RMSLE: d['RMSLE'], Cos_sim: d['Cos_sim'] } });
-
+            message = message.replaceAll('None','null');
+            message = message.replaceAll('nan','null');
+            message = message.replaceAll('NaN','null');
+            message = message.replaceAll('Infinity','999999');
         });
-
         pyshell.end(function (err) {
-            if (err) {
+            if (err){
                 console.log(err);
-                res.json({ error: err });
+                fs.writeFile(`./.user/${user}/.model/${d}/status.config`,'error',(err) => {
+                    if (err) console.log(err);
+                    else {console.log('saved.');}
+                });
             };
         });
+    })
+})
+
+app.post('/api/python/plot',(req,res)=>{
+    const data = req.body;
+    const user = data.userid;
+    const model = data.model;
+    if(fs.existsSync(`./.user/${user}/.model/${model}/log.txt`)){
+        fs.readFile(`./.user/${user}/.model/${model}/log.txt`,'utf8',(err,data)=>{
+            if(err) console.log(err);
+            // if(err) res.json({error:err});
+            else {
+                let loss = [];
+                let valloss = [];
+                const splitData = data.split('\r\n')
+                splitData.pop()
+                splitData.map((d,idx)=>{
+                    let ds = d.split(',');
+                    const pushloss =Number(ds[1].split(':').at(-1)); 
+                    const pushvalloss = Number(ds[2].split(':').at(-1));
+                    loss.push(pushloss);
+                    valloss.push(pushvalloss);
+
+                });
+                res.json({data:data, loss:loss, valloss:valloss});
+            }
+        })
+    } else {
+        res.json({error:'no log file'})
     }
 })
 
-app.post('/api/python/forecast', (req, res) => { // 모델 예측
+app.post('/api/python/yresult',(req,res)=>{
+    const data = req.body;
+    const user = data.userid;
+    const model = data.model;
+
+    if(fs.existsSync(`./.user/${user}/.model/${model}/calresult.json`)){
+        fs.readFile(`./.user/${user}/.model/${model}/calresult.json`,'utf8',(err,data)=>{
+            if(err) res.json({error:err});
+            else {
+                data = data.replaceAll('None','null');
+                data = data.replaceAll('nan','null');
+                data = data.replaceAll('NaN','null');
+                data = data.replaceAll('Infinity','999999');
+                data = JSON.parse(data);
+                if(fs.existsSync(`./.user/${user}/.model/${model}/testresult.json`)){
+                    fs.readFile(`./.user/${user}/.model/${model}/testresult.json`,'utf8',(err,d)=>{
+                        if(err) res.json({error:err});
+                        else {
+                            d = d.replaceAll('None','null');
+                            d = d.replaceAll('nan','null');
+                            d = d.replaceAll('NaN','null');
+                            d = d.replaceAll('Infinity','999999');
+                            d = JSON.parse(d);
+                            const passdatas = PassYresult(d);
+                            res.json(passdatas)
+                        }
+                    })
+                }
+            }
+        })
+    }
+})
+
+app.post('/api/python/forecast',(req,res)=>{
     const data = req.body;
     const user = data.user;
-    const models = data.models.map(m => m.model);
-    const creaters = data.models.map(m => m.creator);
+    const models = data.models.map(m=>m.model);
+    const creaters = data.models.map(m=>m.creator);
     const std = data.std;
     const end = data.end;
     let results = [];
-    console.log(std)
-    console.log(end)
-    models.map((model, idx) => {
-        // ref(가이던스모델)
-        if (fs.existsSync(`./.user/${creaters[idx]}/.model/${model}/isref.config`)) {
-            if (models.length !== 1) res.json({ error: 'ref model은 하나만 선택해주세요.' });
-            else if (fs.existsSync(`./.user/${creaters[idx]}/.model/${model}/predictresult.json`)) {
-                // fs.readFile(`./.user/${user}/.model/${model}/predictresult.json`,'utf8',(err,data)=>{
-                fs.readFile(`./.user/${creaters[idx]}/.model/${model}/predictresult.json`, (err, data) => {
-                    if (err) console.log(err);
-                    else {
-                        const d = JSON.parse(data);
-                        console.log(d)
-                        const returns = forecastDataForRef(d, std, end);
-                        // console.log(returns)
-                        res.json(returns);
-                    }
-                })
-            }
+    models.map((model,idx)=>{
+        let options = {
+            pythonPath: pythonpath,
+            scriptPath: `./script/`,
+            // args: [`${model.creator}`,`${model.model}`,`${std}`,`${end}`],
+            args: [`${creaters[idx]}`,`${model}`,`${std}`,`${end}`],
+            encoding: 'utf8'
         }
 
-        // non-ref
-        else {
-            let options = {
-                pythonPath: pythonpath,
-                scriptPath: `./script/`,
-                // args: [`${model.creator}`,`${model.model}`,`${std}`,`${end}`],
-                args: [`${creaters[idx]}`, `${model}`, `${std}`, `${end}`],
-                encoding: 'utf8'
-            }
-
-            var pyshell = new PythonShell('forecast.py', options);
-
-            pyshell.on('message', function (message) {
-                // received a message sent from the Python script (a simple "print" statement)
-                message = message.replaceAll('None', 'null');
-                message = message.replaceAll('nan', 'null');
-                message = message.replaceAll('NaN', 'null');
-                message = message.replaceAll('infinity', '999999');
-                const d = JSON.parse(message);
-                if (Object.values(d).length === 0) res.json({ error: 'no data' })
-                else {
-                    results.push({ model: model, data: d });
-                    if (results.length == models.length) {
-                        const returns = forecastData(results);
-                        res.json(returns);
-                    }
+        var pyshell = new PythonShell('forecast.py', options);
+        pyshell.on('message', function (message) {
+            // received a message sent from the Python script (a simple "print" statement)
+            message = message.replaceAll('None','null');
+            message = message.replaceAll('nan','null');
+            message = message.replaceAll('NaN','null');
+            message = message.replaceAll('infinity','999999');
+            // console.log(message);
+            const d = JSON.parse(message);
+            console.log('3967 d', d)
+            if(Object.values(d).length===0) res.json({error:'no data'})
+            else{
+                results.push({model:model, data:d});
+                if(results.length == models.length){
+                    const returns = forecastData(results);
+                    res.json(returns);
                 }
-            });
-
-            pyshell.end(function (err) {
-                if (err) {
-                    console.log(err);
-                    res.json({ error: err });
-                };
-            });
-
-        }
+            }
+        });
+        pyshell.end(function (err) {
+            if (err){
+                console.log(err);
+                res.json({error:err});
+            };
+        });
     })
 })
 
@@ -4201,11 +4084,10 @@ app.post('/api/share/save', (req, res) => { // forecast에 사용할 모델 (Mod
                     else {
                         const splitData = config.split('\r\n')
                         splitData.pop()
-                        splitData.shift()
-                        splitData.map(d => {
+                        splitData.map(d=>{
                             let ds = d.split(',');
-                            const pushloss = fs.existsSync(`./.user/${user}/.model/${model}/isref.config`) ? Number(ds[2]) : Number(ds[1].split(':').at(-1));
-                            const pushvalloss = fs.existsSync(`./.user/${user}/.model/${model}/isref.config`) ? Number(ds[6]) : Number(ds[2].split(':').at(-1));
+                            const pushloss =Number(ds[1].split(':').at(-1)); 
+                            const pushvalloss =Number(ds[2].split(':').at(-1));
                             loss.push(pushloss);
                             valloss.push(pushvalloss);
                         });
@@ -4323,7 +4205,6 @@ app.get('/api/share/refmodels', (req, res) => {
     fs.readdir('./.share/.models', (err, files) => {
         if (err) res.json({ error: err });
         else {
-            console.log('files ' + files)
             res.json({ data: files });
         }
     })
@@ -4581,7 +4462,6 @@ app.post('/api/auth/changepwd', (req, res) => {
             if (result.rows.length === 0) {
                 res.json({ error: '존재하지 않는 아이디입니다.' });
             } else {
-                console.log(password, result.rows[0].user_pw)
                 bcrypt.compare(password, result.rows[0].user_pw, (err, rest) => {
                     if (err) { console.log(err); res.json({ error: 'something wrong' }); }
                     else {

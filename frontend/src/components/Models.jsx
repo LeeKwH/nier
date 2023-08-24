@@ -344,7 +344,7 @@ export default function Models(){
         if(mergeLayerError.length!==0){
             mergeLayerError.map(d=>{
                 nodes.map(k=>{
-                    if(d === k.id) nodetmp.push({id:`error_${d}`,type:'default',className:'error-node',data:{label:(<Tooltip title={`Merge 레이어 아래에는 반드시 1개 이상의 레이어가 추가되어야합니다. Merge를 제거하거나 Merge 레이어 아래에 레이어를 추가해주세요.`} followCursor><ErrorIcon color='error'/></Tooltip>)}, draggable:false,position:{x:k.position.x+45, y:k.position.y+25}})
+                    if(d === k.id) nodetmp.push({id:`error_${d}`,type:'default',className:'error-node',data:{label:(<Tooltip title={`Merge 레이어 아래에는 반드시 1개의 Linear 레이어가 추가되어야합니다. Merge를 제거하거나 Merge 레이어 아래에 Linear 레이어를 추가해주세요.`} followCursor><ErrorIcon color='error'/></Tooltip>)}, draggable:false,position:{x:k.position.x+45, y:k.position.y+25}})
                 })
             })
         }
@@ -455,6 +455,7 @@ export default function Models(){
         else if(selectedIdx.endsWith('Merge')&&!layerDefaultName.includes('Merge')) alert("Merge Error: Merge 레이어 이름은 반드시 'Merge'를 포함하여야합니다.");
         else if(selectedIdx.endsWith('Merge')&&rows.map(d=>d.newc).includes(layerDefaultName)) alert(`Merge Error: Merge 레이어 이름이 중복되었습니다. (${layerDefaultName}) Merge 레이어 이름은 중복될 수 없습니다.`);
         else{
+            console.log('458 rows', rows)
             let tmp = [...rows];
             let idx = tmp.length;
             let type = selectedIdx.split('-')[1];
@@ -781,7 +782,9 @@ export default function Models(){
                                             {
                                                 layerfunclist.map((item,i)=>(
                                                     <ListItemButton key={`${l}_${item}`} selected={selectedIdx===`${idx}-${item}`} onClick={(e)=>{setSelectedIdx(`${idx}-${item}`);handleLayerClick(l,item);}} sx={{height:'2vh'}}>
-                                                        <ListItemText primary={item}/>
+                                                        {
+                                                            (item.includes('2d')||item.includes('3d')||['Fold','Unfold','Unflatten'].includes(item))?<ListItemText sx={{color:'#da4f49'}} primary={item}/>:<ListItemText primary={item}/>
+                                                        }
                                                     </ListItemButton>))
                                             }
                                         </ul>
