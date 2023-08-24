@@ -1,199 +1,289 @@
-import argparse, sys, os, torch,pickle
-import json
-import numpy as np
-import random, matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_percentage_error, mean_squared_log_error
 import pandas as pd
-from torch.autograd import Variable 
-from datetime import datetime, timedelta
-from list_lr import *
-from etc_layer import *
+import numpy as np
+from numpy.linalg import norm
+
+from engine import mainmodel as MM
+from engine import list_lr
+from engine import pretools, premodel
+from engine import core as C
+import json,sys, os
 from torch.utils.tensorboard import SummaryWriter
 
 sys.path.append('./')
 nowpath = os.getcwd()
 
-parser = argparse.ArgumentParser()
-parser.add_argument('user_name', type=str)
-parser.add_argument('model_name', type=str)
-args = parser.parse_args()
+user_name = sys.argv[1]
+model_name = sys.argv[2]
 
-dir_script = nowpath+'/.user/'+args.user_name+'/.model/'+args.model_name+'/'
+dir_script = f'{nowpath}/.user/{user_name}/.model/{model_name}/'
+dir_model_save = f'{nowpath}/.user/{user_name}/.model/{model_name}/{model_name}_params.pth'
+modelinfo = json.load(open(dir_script+'modelinfo.json', encoding='UTF8'))
+layerinfo = json.load(open(dir_script+'layerinfo.json', encoding='UTF8'))
 
-model_info = json.load(open(dir_script+'modelinfo.json','r', encoding="UTF-8"))
+cols = layerinfo['cols']
+mers = layerinfo['mers']
 
-input_tmp = model_info['variable']
-input_dataset = model_info['input']
-output_info = input_tmp.pop('out')
-input_info = list(input_tmp.values())
-
-dir_source = nowpath+'/.user/'+args.user_name+'/.data/'+input_dataset+'/'+input_dataset+'.csv' #processed dataset
-dir_input = nowpath+'/.user/'+args.user_name+'/.model/'+args.model_name+'/.input/' #input폴더를 model폴더 하위에 둠
-dir_model_input = nowpath+'/.user/'+args.user_name+'/.model/'+args.model_name+'/first_cols.pkl'
-dir_model_save = nowpath+'/.user/'+args.user_name+'/.model/'+args.model_name+'/'+args.model_name +'_params.pth'
-model_save_mode = 'wb'
-dir_loss = nowpath+'/.user/'+args.user_name+'/.model/'+args.model_name+'/'
-dir_log = nowpath+'/.share/.log/'+args.user_name+'-'+args.model_name
-writer = SummaryWriter(dir_log)
-
-tmp_learn_config = json.load(open(dir_script+'trainconfig.json','r', encoding="UTF-8"))
-learn_config = {'epoch':tmp_learn_config['epoch'],'learn_rate':tmp_learn_config['learning rate'],'device':'cpu','optim':tmp_learn_config['optimizer'],'loss_f':'torch.nn.'+tmp_learn_config['loss function']+'Loss()'}
-train_ratio = tmp_learn_config['Train ratio']/10
-valid_ratio = tmp_learn_config['Validation ratio']/10
-device = torch.device(learn_config['device'])
-
-# YJ
-seqshf = model_info['seqshf']
+seqshf = modelinfo['seqshf']
 Inseq = seqshf['Input Sequence']
 Outseq = seqshf['Output Sequence']
 Inshift = seqshf['Input Shift']
 Outshift = seqshf['Output Shift']
 
-#Import whole dataframes
-df = pd.read_csv(dir_source,  encoding='UTF-8',index_col='date')
-df.index=pd.to_datetime(df.index, format='%Y-%m-%d')
-df = df.astype('float')
-df_input = []
-for inp in input_info: df_input.append(df[inp]) 
-# output = df[output_info].iloc[sequence_num:]
+x_inputs = modelinfo['variable']['1']
+y_targets = modelinfo['variable']['out']
 
-# YJ
-output = df[output_info]
-raw_index = output.dropna(how='any').index
-output = output.interpolate(method='linear', limit=7, limit_direction='backward')
-output = output.shift(-Outshift)
+tmp_learn_config = json.load(open(dir_script+'trainconfig.json','r', encoding="UTF-8"))
+learn_config = json.load(open(dir_script+'trainconfig.json','r', encoding="UTF-8"))
+train_ratio = tmp_learn_config['Train ratio']/10
+valid_ratio = tmp_learn_config['Validation ratio']/10
 
-# YJ
-def create_dataset(data, n_in=1, n_out=1, dropnan=True):
-    n_vars = 1 if type(data) is list else data.shape[1]
-    df = pd.DataFrame(data)
-    cols, names = list(), list()
-    # input sequence (t-n, ... t-1)
-    for i in range(n_in, 0, -1): 
-        cols.append(df.shift(i))
-        names += [('var%d(t-%d)' % (j+1, i)) for j in range(n_vars)]
-    # forecast sequence (t, t+1, ... t+n)
-    for i in range(0, n_out):
-        cols.append(df.shift(-i))
-        if i == 0:
-            names += [('var%d(t)' % (j+1)) for j in range(n_vars)]
-        else:
-            names += [('var%d(t+%d)' % (j+1, i)) for j in range(n_vars)]
-    # put it all together
-    agg = pd.concat(cols, axis=1)
-    agg.columns = names
-    # drop rows with NaN values
-    if dropnan:
-        agg.dropna(axis=0, how='any', inplace=True)
-    return agg
+dir_source = f'{nowpath}/.user/{user_name}/.data/'+modelinfo['input']+'/'+modelinfo['input']+'.csv'
+dir_input = nowpath+'/.user/'+user_name+'/.model/'+model_name+'/.input/'
+dir_log = nowpath+'/.share/.log/'+user_name+'-'+model_name
+writer = SummaryWriter(dir_log)
 
-#To tensor
-with open(dir_model_input, 'rb') as f:
-    first_cols = pickle.load(f)
+rawdata = pretools.get_rawtrn(path=dir_source, encoding='UTF-8',indexcol='date')
 
-list_inps = []
-for idx,inp in enumerate(df_input): #inp type: dataframe
-    inp_dataset = create_dataset(inp, Inseq, 0,dropnan=False)
-    inp_dataset = inp_dataset.loc[raw_index].interpolate(method='linear',limit_direction='backward').bfill().ffill()
-    x_features = inp.shape[1]
-    if first_cols[idx] in list_lr_2d:
-        list_inps.append(torch.tensor(np.vstack(inp_dataset.values).reshape(inp_dataset.shape[0],Inseq,x_features), dtype=torch.float32))
-    else:
-        list_inps.append(torch.tensor(np.vstack(inp_dataset.values), dtype=torch.float32))
+raw_index = rawdata.index
 
-outputs = create_dataset(output, 0, Outseq,dropnan=False)
-outputs = outputs.loc[raw_index].interpolate(method='linear',limit_direction='backward').bfill().ffill()
-test_dates = outputs.index
-outputs = torch.tensor(np.vstack(outputs.values).reshape(outputs.shape[0],Outseq), dtype=torch.float32)
+inputs = rawdata[x_inputs].shift(-Inshift)
+target = rawdata[y_targets].shift(-Outshift)
 
+inputs = premodel.create_dataset(data = inputs, n_in=Inseq, n_out=1, dropnan=False).bfill().ffill()
+
+target = target.loc[inputs.index]
+# Test Dates save
+test_dates = target.index
+
+target = premodel.create_dataset(data=target, n_in=0, n_out=Outseq,dropnan=False).bfill().ffill()
+
+
+# 1d
+input1d = inputs.values.reshape(inputs.shape[0],inputs.shape[1])
+# 2d
+input2d = inputs.values.reshape(inputs.shape[0],Inseq+1,len(x_inputs))
+target = target.values.reshape(target.shape[0], Outseq)
 
 #Split into train/val/test
-train_number = round(outputs.size()[0]*train_ratio)
-valid_number = round(outputs.size()[0]*valid_ratio)+train_number
+train_number = round(target.shape[0]*train_ratio)
+valid_number = round(target.shape[0]*valid_ratio)+train_number
 
-train_list_inps = []
-valid_list_inps = []
-test_list_inps = []
+test_date = test_dates[valid_number+1:].astype(str)
 
-for inp in list_inps:
-    train_list_inps.append(inp[:train_number])
-    valid_list_inps.append(inp[train_number+1:valid_number])
-    test_list_inps.append(inp[valid_number+1:])
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# print(train_list_inps[0].shape)
-train_y = outputs[:train_number]
-valid_y = outputs[train_number+1:valid_number]
-test_y = outputs[valid_number+1:]
-torch.save(train_list_inps, dir_input + 'train_list_inps.pt')
-torch.save(test_list_inps, dir_input + 'test_list_inps.pt')
-torch.save(train_y, dir_input + 'train_y.pt')
-torch.save(valid_y, dir_input + 'valid_y.pt')
-torch.save(test_y, dir_input + 'test_y.pt')
+# MergeModel
+Merge_input = []
+if mers:
+    for col in list(cols.values()):
+        if col[0]['type']in list_lr.list_lr_2d:
+            Merge_input.append(input2d)
+            if col[0]['type']in list_lr.list_lr_order:
+                col[0]['in'] = input2d.shape[2]
+            else:
+                col[0]['in'] = input2d.shape[1]
+        else:
+            Merge_input.append(input1d)
+            col[0]['in'] = input1d.shape[1]
 
-test_date = test_dates[valid_number+1:]
-test_date = [date.strftime('%Y-%m-%d') for date in test_date]
-json.dump(test_date, open(dir_input + 'test_date.json', 'w'))
-
-#Import the model from the script
-f = open(dir_script+args.model_name+'.py',encoding='UTF8')
-exec(f.read())
-f.close()
-exec(args.model_name+'_init ='+args.model_name+'(train_list_inps)')
-
-# writer.add_graph(args.model_name+'_init')
-
-#Relocate them to gpu
-exec(args.model_name+'_init ='+args.model_name+'_init.to(device)')
-exec('optimizer = torch.optim.%s(%s_init.parameters(),lr = %f)'%(learn_config['optim'],args.model_name,learn_config['learn_rate']))
-train_list_inps = []
-valid_list_inps = []
-test_list_inps = []
-for inp in list_inps:
-    train_list_inps.append(inp[:train_number].to(device))
-    valid_list_inps.append(inp[train_number+1:valid_number].to(device))
-    test_list_inps.append(inp[valid_number+1:].to(device))
+else:
+    datas = list(cols.values())[0]
+    if datas[0]['type'] in list_lr.list_lr_2d:
+        inputs = input2d
+        if datas[0]['type']in list_lr.list_lr_order:
+            datas[0]['in'] = input2d.shape[2]
+        else:
+            datas[0]['in'] = input2d.shape[1]
+    # Model is ref model
+    elif datas[0]['type'] in list_lr.list_lr_guide:
+        inputs = input2d
+        datas[0]['in'] = input2d.shape[2]
+    else:
+        inputs = input1d
+        datas[0]['in'] = input1d.shape[1]
 
 
-#Learning loops
-best_val_loss = 1
-savecheck = 0
-train_losses = []
-validation_losses = []
+if mers:
+    datas = {
+        'cols' : cols,
+        'mers' : mers
+    }
+    model = MM.MergeModel(datas,7,device)
+    M_data ={
+        'train_inputs':[],
+        'train_target':None,
+        'test_inputs':[],
+        'test_target':None,
+        'val_inputs':[],
+        'val_target':None
+    }
+    for idx,inp in enumerate(Merge_input):
+        train_inputs, train_target = inp[:train_number], target[:train_number]
+        val_inputs, val_target = inp[train_number+1:valid_number],target[train_number+1:valid_number]
+        test_inputs, test_target = inp[valid_number+1:], target[valid_number+1:]
 
-with open(dir_loss+'log.txt', "w") as f: #ej
-    # f.write()
-    for epoch in range(learn_config['epoch']): #Generate log files(.txt, .png) for every epoch
-        exec('output = '+args.model_name+'_init(train_list_inps)')#forward pass and update output conv1d_d_input.float().to(device)
-        # print(output.shape)
-        optimizer.zero_grad() #clear the existing gradients though, else gradients will be accumulated to existing gradients.
-        exec('loss = %s(output.to(device),train_y.to(device))'%learn_config['loss_f']) # calculate updated loss
-        writer.add_scalar('Loss/train', loss.item(), epoch)
-        loss.backward() #To backpropagate the error
-        optimizer.step() #update the model paramters, i.e backward
-        train_losses.append(loss.item()) 
-        ### validation data 
-        exec('output_val = '+args.model_name+'_init(valid_list_inps)')
-        exec('val_loss = %s(output_val.to(device), valid_y.to(device))'%learn_config['loss_f'])
-        validation_losses.append(val_loss.item())
-            #validation loss
+        
+        M_data['train_inputs'].append(torch.Tensor(train_inputs).to(device))
+        M_data['test_inputs'].append(torch.Tensor(test_inputs).to(device))
+        M_data['val_inputs'].append(torch.Tensor(val_inputs).to(device))
+        
+        if idx ==0:
+            M_data['train_target'] = torch.Tensor(train_target).long().to(device)
+            M_data['val_target']   = torch.Tensor(val_target).long().to(device)
+            M_data['test_target']  = torch.Tensor(test_target).long().to(device)
+
+    train_dataset = TensorDataset(*M_data['train_inputs'], M_data['train_target'])
+    val_dataset   = TensorDataset(*M_data['val_inputs'], M_data['val_target'])
+    test_dataset  = TensorDataset(*M_data['test_inputs'], M_data['test_target'])
+
+
+else:
+    # ref model
+    if datas[0]['type'] in list_lr.list_lr_guide:
+        model = C.AttentionLSTM(datas[0]['in'],Outseq).to(device)
+    else:
+        model = MM.MainModel(datas,7).to(device)
+
+    train_inputs, train_target = inputs[:train_number], target[:train_number]
+    val_inputs, val_target = inputs[train_number+1:valid_number],target[train_number+1:valid_number]
+    test_inputs, test_target = inputs[valid_number+1:], target[valid_number+1:]
+
+    train_inputs = torch.Tensor(train_inputs).to(device)
+    train_target = torch.Tensor(train_target).long().to(device)
+    val_inputs   = torch.Tensor(val_inputs).to(device)
+    val_target   = torch.Tensor(val_target).long().to(device)
+    test_inputs  = torch.Tensor(test_inputs).to(device)
+    test_target  = torch.Tensor(test_target).long().to(device)
+
+    # generate dataset
+    train_dataset = TensorDataset(train_inputs, train_target)
+    val_dataset   = TensorDataset(val_inputs, val_target)
+    test_dataset  = TensorDataset(test_inputs, test_target)
+
+
+batch_size = 32
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+val_dataloader   = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+test_dataloader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+# define loss and optimizer
+exec('criterion = nn.{}Loss()'.format(learn_config['loss function']))
+exec('optimizer = torch.optim.{0}(model.parameters(), lr={1})'.format(learn_config['optimizer'],learn_config['learning rate']))
+
+num_epochs = learn_config['epoch']
+
+with open(dir_script+'log.txt', "w") as f:
+    for epoch in range(num_epochs):
+        model.train()
+
+        if mers:
+            for batch_data in train_dataloader:
+                # convert batch to tensor
+                batch_targets = batch_data[-1].to(device)
+                # run forward pass
+                outputs = model(batch_data[:-1])
+                # calculate loss
+                loss = criterion(outputs, batch_targets.float())
+                # update weights and biases with backprop
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+            # calculate validation loss
+            val_loss = 0.0
+            # switch to evaluation mode
+            model.eval()  
+            with torch.no_grad():
+                for val_data in val_dataloader:
+                    val_targets = val_data[-1].to(device)
+                    val_outputs = model(val_data[:-1])
+                    val_loss += criterion(val_outputs, val_targets).item()
+            val_loss /= len(val_dataloader)
+
+
+        else:
+            for batch_inputs, batch_targets in train_dataloader:
+                # convert batch to tensor
+                batch_targets = batch_targets.to(device)
+                # run forward pass
+                outputs = model(batch_inputs)
+                # calculate loss
+                loss = criterion(outputs, batch_targets.float())
+                # update weights and biases with backprop
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+            # calculate validation loss
+            val_loss = 0.0
+            # switch to evaluation mode
+            model.eval()  
+            with torch.no_grad():
+                for val_inputs, val_targets in val_dataloader:
+                    val_targets = val_targets.to(device)
+                    val_outputs = model(val_inputs)
+                    val_loss += criterion(val_outputs, val_targets).item()
+            val_loss /= len(val_dataloader)
+
+        writer.add_scalar('Loss/train',loss.item(),epoch)
+        f.write(f'Epoch: {epoch}, train_loss: {loss.item():.4f}, val_loss: {val_loss:.4f} \n')
         if epoch == 0:
-            best_val_loss = val_loss.item()
-        if val_loss.item() < best_val_loss:
-            savecheck = 1
-            exec('torch.save(%s_init.state_dict(), open(dir_model_save,model_save_mode))'%args.model_name)  
-            # f.write('best model save - Epoch: %d, train_loss: %1.5f, val_loss: %1.5f \n'%(epoch, loss.item(), val_loss.item()))      
-            best_val_loss = val_loss.item()
-        if epoch == int(learn_config['epoch'])-1 and savecheck == 0:
-            exec('torch.save(%s_init.state_dict(), open(dir_model_save,model_save_mode))'%args.model_name)  
-            
-        f.write('Epoch: %d, train_loss: %1.5f, val_loss: %1.5f \n' % (epoch+1, loss.item(), val_loss.item()))
+            best_val_loss = val_loss
+        if val_loss<=best_val_loss:
+            torch.save(model.state_dict(),open(dir_model_save,'wb'))
+            best_val_loss = val_loss
     f.write('Learning completed')
 
+y_true = pd.DataFrame()
+y_pred = pd.DataFrame()
+
+# Test
+out_columns = ['%s(t+%d)'%(x,y) for x in y_targets for y in range(Outseq)]
+model.eval()
+if mers:
+    with torch.no_grad():
+        for test_data in test_dataloader:
+            test_targets = test_data[-1].to(device)
+            test_outputs = model(test_data[:-1])
+            test_outputs[test_outputs<0] = 0
+            test_out = pd.DataFrame(test_outputs.cpu().numpy(),columns=out_columns)
+            test_in = pd.DataFrame(test_targets.cpu().numpy(),columns=out_columns)
+            y_true = pd.concat([y_true,test_in],ignore_index=True)
+            y_pred = pd.concat([y_pred,test_out],ignore_index=True)
+
+else:
+    with torch.no_grad():
+        for test_inputs, test_targets in test_dataloader:
+            # test_inputs = test_inputs.transpose(1, 2)
+            test_outputs = model(test_inputs)
+            test_outputs[test_outputs<0] = 0
+            test_out = pd.DataFrame(test_outputs.cpu().numpy(),columns=out_columns)
+            test_in = pd.DataFrame(test_targets.cpu().numpy(),columns=out_columns)
+            y_true = pd.concat([y_true,test_in],ignore_index=True)
+            y_pred = pd.concat([y_pred,test_out],ignore_index=True)
+
+y_pred.index = test_date
+y_true.index = test_date
+
+y_eval = y_pred.to_numpy()
+y_eval_true = y_true.to_numpy()
+
+#Evaluation metrics
+test_Cos_sim = np.round(np.dot(y_eval_true.reshape(-1), y_eval.reshape(-1))/(norm(y_eval_true.reshape(-1))*norm(y_eval.reshape(-1))),3) #scale -1~1
+test_MAPE = np.round(mean_absolute_percentage_error(y_eval_true, y_eval),2)
+test_RMSLE = np.round(np.sqrt(mean_squared_log_error(y_eval_true, y_eval)),1)
+
+with open(dir_script+'calresult.json', 'w') as f:
+    json.dump({"MAPE":test_MAPE, "RMSLE":test_RMSLE, "Cos_sim":test_Cos_sim},f)
+
+with open(dir_script+'testresult.json', 'w', encoding='utf-8') as f:
+    json.dump({"test_yhat":y_pred.to_dict(), "test_y":y_true.to_dict(),'date':test_date.to_list(),'len':len(test_date)},f, ensure_ascii=False)
 
 #Save the state
-with open(nowpath+'/.user/'+args.user_name+'/.model/'+args.model_name+'/status.config', 'w') as f:
+with open(dir_script+'status.config', 'w') as f:
     f.write('done')
-
-
-
-
-

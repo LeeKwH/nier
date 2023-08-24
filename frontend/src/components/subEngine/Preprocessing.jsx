@@ -595,13 +595,14 @@ export default function Preprocessing() {
                                             <li key={d} className="list-section">
                                                 <ul>
                                                     {['ColumnPCA', 'ColumnSummary', 'Sampling', 'FeatureSelection'].includes(d) ? <ListSubheader sx={{ color: '#da4f49' }}>{d}</ListSubheader> : <ListSubheader>{d}</ListSubheader>}
+
                                                     {
-                                                        Object.keys(descript[d]).map(f => (
-                                                            <ListItemButton key={`${d}_${f}`} selected={selectedIdx === `${d}-${f}`} onClick={(e) => { setSelectedIdx(`${d}-${f}`); }} sx={{ height: '2vh', paddingLeft: '2rem' }}>
-                                                                <ListItemText primary={f} />
-                                                            </ListItemButton>
-                                                        ))
-                                                    }
+                                                    Object.keys(descript[d]).map(f=>(
+                                                        <ListItemButton key={`${d}_${f}`} selected={selectedIdx===`${d}-${f}`} onClick={(e)=>{setSelectedIdx(`${d}-${f}`);}} sx={{height:'2vh', paddingLeft:'2rem'}}>
+                                                            {['ColumnPCA','ColumnSummary','Sampling','FeatureSelection'].includes(d)?<ListItemText sx={{color:'#da4f49'}} primary={f}/>:<ListItemText primary={f}/>}
+                                                        </ListItemButton>
+                                                    ))
+                                                }
                                                 </ul>
                                             </li>
                                         )

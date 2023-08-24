@@ -90,9 +90,11 @@ export default function Forecast(){
             else {
                 setModelList(data);
                 const models = Object.keys(data).sort((a,b)=>a.localeCompare(b));
+                console.log('data', data)
                 if(models.length!==0){
                     let tmp = [];
                     models.map(d=>{
+                        console.log('d', d)
                         tmp.push({
                             id:tmp.length+1,
                             creator:data[d].creator,
@@ -177,7 +179,10 @@ export default function Forecast(){
             setIsForecast(true);
             const models = select.map(d=>modelRow[d-1]);
             // const models = select.map(d=>modelRow[d-1]);
-            
+            console.log('userid', userid)
+            console.log('models', models)
+            console.log('std', forecastStd.format('YYYY-MM-DD'))
+            console.log('end', forecastEnd.format('YYYY-MM-DD'))
             fetch('api/python/forecast',{
                 method:'POST',
                 headers:{

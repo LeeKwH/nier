@@ -1,78 +1,150 @@
-import argparse, sys, os, torch, glob
-from sqlalchemy import create_engine
+import pandas as pd
+import numpy as np
 from functools import reduce
-import json
+import json, glob,pickle
 import pandas as pd, numpy as np
-import pickle
 import psycopg2 as psql
-from numpy.linalg import norm
-from sklearn.metrics import mean_absolute_percentage_error, mean_squared_log_error
+from engine import pretools, premodel
+from engine import list_lr
+from engine import mainmodel as MM
+from engine import core as C
+import oracledb
+import torch
+import torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
 from processingForecast import *
 from datetime import datetime, timedelta
-from dateutil.rrule import rrule, DAILY
-from etc_layer import *
-from list_lr import *
+import attr_mapping_info
+
+from engine.core import AttentionLSTM, EarlyStopping
+import os
 
 nowpath = os.getcwd()
 sys.path.append(nowpath)
-psql_db = psql.connect(host='localhost',dbname='NIERDB', user='nier', password='dkdk123', port=5432)
-cursor = psql_db.cursor()
 
 user_name = sys.argv[1]
 model_name = sys.argv[2]
 start_date = sys.argv[3]
 end_date = sys.argv[4]
 
+# 오라클 DB
+oracledb.init_oracle_client(lib_dir="C:\\instantclient_11_2")
+
+username="WATER"
+userpwd = "Innopost7557*"
+host = "172.30.1.95"
+port = 1521
+service_name = "system"
+
+dsn = f'{username}/{userpwd}@{host}:{port}/{service_name}'
+connection = oracledb.connect(dsn)
+
 start_date = datetime.strptime(start_date, '%Y-%m-%d')
 end_date = datetime.strptime(end_date, '%Y-%m-%d')
 
-dir_script = nowpath+'/.user/'+user_name+'/.model/'+model_name+'/'
-dir_input = nowpath+'/.user/'+user_name+'/.model/'+model_name+'/.input/' #ej
-dir_model_input = nowpath+'/.user/'+user_name+'/.model/'+model_name+'/first_cols.pkl'
-dir_model_save = nowpath+'/.user/'+user_name+'/.model/'+model_name+'/'+model_name +'_params.pth'
+formatted_start_date = start_date.strftime("%Y%m%d")
+formatted_end_date = end_date.strftime("%Y%m%d")
 
-model_info = json.load(open(dir_script+'modelinfo.json','r', encoding="UTF-8"))
-input_tmp = model_info['variable']
-variables = model_info['allVariables']
-output_info = input_tmp.pop('out') #아웃풋명
-input_info = list(input_tmp.values()) 
-dataset = model_info['input']
-seqshf = model_info['seqshf']
+dir_script = f'{nowpath}/.user/{user_name}/.model/{model_name}/'
+modelinfo = json.load(open(dir_script+'modelinfo.json', encoding='UTF8'))
+layerinfo = json.load(open(dir_script+'layerinfo.json', encoding='UTF8'))
+
+cols = layerinfo['cols']
+mers = layerinfo['mers']
+
+# allVariables: [ '수질-광동댐-수온', '수질-광동댐-DO', '수질-광동댐-BOD', '수질-광동댐-COD' ]
+variables = modelinfo['allVariables']
+y_targets = modelinfo['variable']['out'] #아웃풋명
+x_inputs = modelinfo['variable']['1']
+dataset = modelinfo['input']
+seqshf = modelinfo['seqshf']
 Inseq = seqshf['Input Sequence']
 Outseq = seqshf['Output Sequence']
 Inshift = seqshf['Input Shift']
 Outshift = seqshf['Output Shift']
 
-out_columns = ['%s(t+%d)'%(x,y) for x in output_info for y in range(Outseq)]
 
+out_columns = ['%s(t+%d)'%(x,y) for x in y_targets for y in range(Outseq)]
 
-dir_preprocess = nowpath+'/.user/'+user_name+'/.data/'+dataset+'/' #process 정보
+dir_preprocess = f'{nowpath}/.user/{user_name}/.data/{dataset}/' #process 정보
+
+attr_data = attr_mapping_info.get_data()
 
 #Get data during the forecast period
 collection = []
 use_var =[]
+
 for var in variables:
     category, site, item = var.split('-') #지금 psql조회는 지점명(파일명)으로 하기때문에 중복지점명 있을경우 오류발생
     use_var.append(category+'_'+site+'_'+item)
-    date = pd.read_sql_query(str('select "1" from "') + site+ str('" as t("1")'), psql_db)  #첫열은 DATE;  ***시간 단위는 아직 처리 불가능
-    current_db = pd.read_sql_query(str('select "') + item + str('" from "') + site+'"', psql_db)
-    current_db.columns  = category+'_'+site +'_'+ current_db.columns
-    var_df = pd.concat([date,current_db],axis=1)   #지점별 데이터들 횡방향 붙임
-    var_df.rename(columns={'1':'date'}, inplace = True)
+    vals = attr_data[item]
+    if category=='수질':
+        table = 'V_MSR_WQMN_DAY'
+        sql = f"""
+        SELECT TO_DATE(WTRSMPLE_DE, 'YYYY-MM-DD') as D, {vals} 
+        FROM {table}
+        WHERE TO_DATE(WTRSMPLE_DE, 'YYYYMMDD') BETWEEN TO_DATE({formatted_start_date}, 'YYYYMMDD') AND TO_DATE({formatted_end_date}, 'YYYYMMDD') AND WQMN_NM = '{site}'
+        ORDER BY WTRSMPLE_DE
+        """
+    elif category=='수위':
+        table = 'V_FLU_WLV_DAY'
+        sql = f"""
+        SELECT TO_DATE(OBSR_DE, 'YYYY-MM-DD') as D, {vals}
+        FROM {table}
+        WHERE TO_DATE(OBSR_DE, 'YYYYMMDD') BETWEEN TO_DATE({formatted_start_date}, 'YYYYMMDD') AND TO_DATE({formatted_end_date}, 'YYYYMMDD') AND OBSRVT_NM = '{site}'
+        ORDER BY OBSR_DE
+        """
+    elif category=='강수량':
+        table = 'V_FLU_GDWETHER_DAY'
+        sql = f"""
+        SELECT TO_DATE(OBSR_DE, 'YYYY-MM-DD') as D, {vals}
+        FROM {table}
+        WHERE TO_DATE(OBSR_DE, 'YYYYMMDD') BETWEEN TO_DATE({formatted_start_date}, 'YYYYMMDD') AND TO_DATE({formatted_end_date}, 'YYYYMMDD') AND OBSRVT_NM = '{site}'
+        ORDER BY OBSR_DE
+        """
+    elif category=='댐':
+        table = 'V_FLU_DAM_DAY'
+        sql = f"""
+        SELECT TO_DATE(YEAR || MT || DE, 'YYYY-MM-DD') as D, {vals}
+        FROM {table}
+        WHERE TO_DATE(YEAR || MT || DE, 'YYYYMMDD') BETWEEN TO_DATE({formatted_start_date}, 'YYYYMMDD') AND TO_DATE({formatted_end_date}, 'YYYYMMDD') AND OBSRVT_NM = '{site}'
+        ORDER BY TO_DATE(YEAR || MT || DE, 'YYYYMMDD')
+        """
+    elif category=='유량':
+        table = 'V_FLU_FLUX_DAY'
+        sql = f"""
+        SELECT TO_DATE(YEAR || MT || DE, 'YYYY-MM-DD') as D, {vals}
+        FROM {table}
+        WHERE TO_DATE(YEAR || MT || DE, 'YYYYMMDD') BETWEEN TO_DATE({formatted_start_date}, 'YYYYMMDD') AND TO_DATE({formatted_end_date}, 'YYYYMMDD') AND OBSRVT_NM = '{site}'
+        ORDER BY TO_DATE(YEAR || MT || DE, 'YYYYMMDD')
+        """
+    elif category=='조류':
+        table = 'V_MSR_SWMN_DAY'
+        sql = f"""
+        SELECT TO_DATE(CHCK_DE, 'YYYY-MM-DD') as D, {vals}
+        FROM {table}
+        WHERE TO_DATE(CHCK_DE, 'YYYYMMDD') BETWEEN TO_DATE({formatted_start_date}, 'YYYYMMDD') AND TO_DATE({formatted_end_date}, 'YYYYMMDD') AND SWMN_NM || '(' || SWMN_DETAIL_NM || ')'= '{site}'
+        ORDER BY CHCK_DE
+        """
+    current_db = connection
+    var_df = pd.read_sql_query(sql, connection)
+    var_df.rename(columns={'D':'date'}, inplace = True)
+    var_df.columns = ['date'] + [category+'_'+site +'_'+item]
     var_df[var_df.columns[0]] = pd.DatetimeIndex(var_df[var_df.columns[0]])
     var_df = var_df.set_index(var_df[var_df.columns[0]])
     var_df = var_df.drop(var_df.columns[0],axis=1)
     collection.append(var_df)
 df = reduce(lambda left,right: pd.merge(left,right,on=['date'], how='outer'),collection).sort_index()
 forecast = df.loc[start_date-timedelta(days=30):end_date]
-forecast_y = df[output_info].loc[start_date:end_date]
+# forecast_y = df[output_info].loc[start_date:end_date]
+forecast_y = forecast[y_targets]
 
-#전처리 수행
 process_info = json.load(open(dir_preprocess+dataset+'_pre.json','r', encoding="UTF-8"))
-# process_info = json.load(open('D://cyj/00_project/02_algaeAI/2023/00_dev/nier/backend/.user/admin/.data/lastTest/lastTest_pre.json','r', encoding="UTF-8"))
-'''수정'''
+# => [{"var":["수질_광동댐_수온","수질_광동댐_DO","수질_광동댐_BOD","수질_광동댐_COD"],"function":"dropna","method":"all","attributes":""}]
+
+
 for trial in process_info:
-    if trial['function'] != 'Scaling':
+    if trial['function'] != 'Scaling' and trial['function'] != 'dropna':
         varList = list(set(trial['var']) & set(use_var))
         df_sel = forecast[varList]
         df_remain = forecast.drop(varList, axis=1)
@@ -84,7 +156,6 @@ for trial in process_info:
 
 forecast_dates = forecast.index.astype(str)
 
-# 위치
 scaler_save = f"{dir_preprocess}/*.pkl"    #scaler_save = '***-조류_공산지_anabaena-조류_공산지_microcystis-.pkl'
 if os.path.isfile(scaler_save):
     for scaler_save in glob.glob(dir_preprocess + '*.pkl'):    
@@ -93,86 +164,123 @@ if os.path.isfile(scaler_save):
         df_tran = load_scaler.transform(df_sel)
         forecast[scaler_save.split('-')[1:-1]] = df_tran
 
-#Create list_inps
-df_input = []
-for inp in input_info: df_input.append(forecast[inp])
+inputs = forecast[x_inputs]
+inputs = premodel.create_dataset(data=inputs,n_in=Inseq, n_out=1, dropnan=False).bfill().ffill()
 
+targets = premodel.create_dataset(data=forecast_y,n_in=0,n_out=Outseq,dropnan=False).bfill().ffill()
 
-def create_dataset(data, n_in=1, n_out=1, dropnan=True):
-    n_vars = 1 if type(data) is list else data.shape[1]
-    df = pd.DataFrame(data)
-    cols, names = list(), list()
-    # input sequence (t-n, ... t-1)
-    for i in range(n_in, 0, -1): 
-        cols.append(df.shift(i))
-        names += [('var%d(t-%d)' % (j+1, i)) for j in range(n_vars)]
-    # forecast sequence (t, t+1, ... t+n)
-    for i in range(0, n_out):
-        cols.append(df.shift(-i))
-        if i == 0:
-            names += [('var%d(t)' % (j+1)) for j in range(n_vars)]
+# 1d
+input1d = inputs.values.reshape(inputs.shape[0],inputs.shape[1])
+# 2d
+input2d = inputs.values.reshape(inputs.shape[0],Inseq+1,len(x_inputs))
+target = targets.values.reshape(targets.shape[0], Outseq)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# MergeModel
+Merge_input = []
+if mers:
+    for col in list(cols.values()):
+        if col[0]['type']in list_lr.list_lr_2d:
+            Merge_input.append(input2d)
+            if col[0]['type']in list_lr.list_lr_order:
+                col[0]['in'] = input2d.shape[2]
+            else:
+                col[0]['in'] = input2d.shape[1]
         else:
-            names += [('var%d(t+%d)' % (j+1, i)) for j in range(n_vars)]
-    # put it all together
-    agg = pd.concat(cols, axis=1)
-    agg.columns = names
-    # drop rows with NaN values
-    if dropnan:
-        agg.dropna(axis=0, how='any', inplace=True)
-    return agg
+            Merge_input.append(input1d)
+            col[0]['in'] = input1d.shape[1]
+
+else:
+    datas = list(cols.values())[0]
+    if datas[0]['type'] in list_lr.list_lr_2d:
+        inputs = input2d
+        if datas[0]['type']in list_lr.list_lr_order:
+            datas[0]['in'] = input2d.shape[2]
+        else:
+            datas[0]['in'] = input2d.shape[1]
+    # Model is ref model
+    elif datas[0]['type'] in list_lr.list_lr_guide:
+        inputs = input2d
+        datas[0]['in'] = input2d.shape[2]
+    else:
+        inputs = input1d
+        datas[0]['in'] = input1d.shape[1]
 
 
-#To tensor
-with open(dir_model_input, 'rb') as f:
-    first_cols = pickle.load(f)
-forecast_list_inps = []                                                                                                                               
-for idx,inp in enumerate(df_input): #inp type: dataframe
-    inp_dataset = create_dataset(inp, Inseq, 0,dropnan=False)
-    x_features = inp.shape[1]
-    dt_list = []
-    for dt in rrule(DAILY, dtstart=start_date, until=end_date): #YEARLY, MONTHLY, WEEKLY, DAILY, HOURLY, MINUTELY, or SECONDLY.
-        if first_cols[idx] in list_lr_2d:#현재 수치형 인풋(2D)->3D전환 밖에 안됨
-            forecast_list_inps.append(torch.tensor(np.vstack(inp_dataset.values).reshape(inp_dataset.shape[0],Inseq,x_features), dtype=torch.float32))
-            dt_list.append(dt)
-        else: 
-            forecast_list_inps.append(torch.tensor(np.vstack(inp_dataset.values), dtype=torch.float32))
+# Model make
+if mers:
+    datas = {
+        'cols' : cols,
+        'mers' : mers
+    }
+    model = MM.MergeModel(datas,7,device)
+    M_data ={
+        'inputs':[],
+        'target':None,
+    }
+    for idx,inp in enumerate(Merge_input):
+        
+        M_data['inputs'].append(torch.Tensor(inp).to(device))
+        
+        if idx ==0:
+            M_data['target'] = torch.Tensor(target).long().to(device)
 
-# 모델  매개변수 불러오기
-f = open(dir_script+model_name+'.py',encoding='UTF8')
-exec(f.read())
-f.close()
-exec(model_name+'_load ='+model_name+'(forecast_list_inps)')
-exec('%s_load.load_state_dict(torch.load(dir_model_save), strict=False)'%model_name)
+    datasets = TensorDataset(*M_data['inputs'], M_data['target'])
 
 
-# Generate prediction on the forecast data
-exec('forecast_yhat = ' +model_name+ '_load(forecast_list_inps).data.detach().cpu().numpy()')
+else:
+    # ref model
+    if datas[0]['type'] in list_lr.list_lr_guide:
+        model = C.AttentionLSTM(datas[0]['in'],Outseq).to(device)
+    else:
+        model = MM.MainModel(datas,7).to(device)
 
-scaler_save = f"{dir_preprocess}/{'-'.join(df.columns)}.pkl"
-if os.path.isfile(scaler_save):
-    load_scaler = pickle.load(open(scaler_save, 'rb'))
-    forecast_yhat = load_scaler.inverse_transform(forecast_yhat)
-train_y = torch.load(dir_input + 'train_y.pt').data.detach().cpu().numpy()
+    inputs = torch.Tensor(inputs).to(device)
+    target = torch.Tensor(target).long().to(device)
 
-forecast_yhat[forecast_yhat < 0] = 0
+    # generate dataset
+    datasets = TensorDataset(inputs, target)
 
-forecast_yhat = pd.DataFrame(forecast_yhat, columns = out_columns)
-forecast_yhat.index = forecast_dates
+batch_size = 32
+D_loader = DataLoader(datasets,batch_size=batch_size,shuffle=False)
 
-loc_start = start_date.strftime('%Y-%m-%d')
-loc_end = end_date.strftime('%Y-%m-%d')
-forecast_yhat = forecast_yhat.loc[loc_start:loc_end]
+model.load_state_dict(torch.load(f'{dir_script}{model_name}_params.pth'),strict=False)
 
-# print(forecast_y)
-# print(forecast_yhat)
 
-forecast_yhat.index = forecast_yhat.index.astype(str)
-forecast_y.index = forecast_y.index.astype(str)
+y_true = pd.DataFrame()
+y_pred = pd.DataFrame()
 
-#프론트 반환
+model.eval()
+
+if mers:
+    with torch.no_grad():
+        for test_data in D_loader:
+            test_targets = test_data[-1].to(device)
+            test_outputs = model(test_data[:-1])
+            test_outputs[test_outputs<0] = 0
+            test_out = pd.DataFrame(test_outputs.cpu().numpy(),columns=out_columns)
+            test_in = pd.DataFrame(test_targets.cpu().numpy(),columns=out_columns)
+            y_true = pd.concat([y_true,test_in],ignore_index=True)
+            y_pred = pd.concat([y_pred,test_out],ignore_index=True)
+
+else:
+    with torch.no_grad():
+        for test_inputs, test_targets in D_loader:
+            # test_inputs = test_inputs.transpose(1, 2)
+            test_outputs = model(test_inputs)
+            test_outputs[test_outputs<0] = 0
+            test_out = pd.DataFrame(test_outputs.cpu().numpy(),columns=out_columns)
+            test_in = pd.DataFrame(test_targets.cpu().numpy(),columns=out_columns)
+            y_true = pd.concat([y_true,test_in],ignore_index=True)
+            y_pred = pd.concat([y_pred,test_out],ignore_index=True)
+
+
+y_pred.index = forecast_dates
+y_true.index = forecast_dates
+
 print(json.dumps({
-    'forecast_yhat' : forecast_yhat.to_dict(),
-    'forecast_y' : forecast_y.to_dict(),
+    'forecast_yhat' : y_pred.to_dict(),
+    'forecast_y' : y_true.to_dict(),
+    'date':forecast_dates.to_list()
     } ,separators=(',', ':')))
-# print(json.dumps(forecast_yhat.to_dict(),ensure_ascii=False ,separators=(',', ':')))
-# print(json.dumps(forecast_yhat.to_dict('records'),ensure_ascii=False ,separators=(',', ':')))
