@@ -14,9 +14,11 @@ method = sys.argv[2]
 attribute = sys.argv[3]
 user_name = sys.argv[4]
 key = sys.argv[5]
-columns = sys.argv[6]
+passdataFilePath = sys.argv[6]
+with open(passdataFilePath, 'r', encoding='utf-8') as json_file:
+    data = json.load(json_file)
 dir_preprocess = nowpath+'/.user/'+user_name+'/.data/.tmp'
-df1 = pd.DataFrame.from_dict(json.loads(columns))
+df1 = pd.DataFrame.from_dict(data)
 df1 = df1.set_index(keys=['date'], drop=True)
 df1.index = pd.to_datetime(df1.index)
 

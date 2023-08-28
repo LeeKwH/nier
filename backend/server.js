@@ -15,6 +15,7 @@ const cookieParser = require('cookie-parser');
 const { PythonShell } = require("python-shell");
 const si = require('systeminformation');
 const os = require('os-utils');
+const crypto = require('crypto');
 
 app.use(express.urlencoded({
     extended: true
@@ -467,56 +468,6 @@ const forecastData = (data) => {
     return result;
 }
 
-const forecastDataForRef = (data, std, end) => { // 가이던스 모델 사용 시
-    let Tresult = [];
-    let tmpTresult = {};
-    let Gresult = [];
-    let Dates = [];
-    const regions = Object.keys(data);
-
-    regions.map(r => {
-        const usedata = data[r]["prediction"];
-        const ydata = data[r]["유해남조류세포수_Y"]
-        Dates = Object.keys(usedata);
-        Dates = Dates.filter(d => d >= std && d <= end);
-        let predData = [];
-        let yData = [];
-        Dates.map(date => {
-            if (!tmpTresult[date]) tmpTresult[date] = {};
-            if (!tmpTresult[date][r]) tmpTresult[date][r] = usedata[date];
-            predData.push(usedata[date]);
-            yData.push(ydata[date]);
-        })
-        Gresult.push([{
-            label: `${r}_유해남조류세포수_predict`,
-            data: predData,
-            type: 'line',
-            borderColor: 'rgb(250, 0, 0)',
-            backgroundColor: 'rgba(250, 0, 0, 0.5)',
-            borderWidth: 1,
-            pointRadius: 0.2,
-        }, {
-            label: `${r}_유해남조류세포수_y`,
-            data: Object.values(ydata),
-            type: 'line',
-            borderColor: 'rgb(0, 0, 0)',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            borderWidth: 1,
-            pointRadius: 0.2,
-        },])
-    })
-    Dates.map((d, i) => {
-        Tresult.push({ id: i, ...tmpTresult[d], date: d });
-    })
-    Tresult.sort((a, b) => a.date - b.date);
-    const result = {
-        date: Dates,
-        table: Tresult,
-        graph: Gresult
-    }
-    return result;
-}
-
 const SeachData = (data, select, search) => { // frontend의 Database 화면, 데이터 검색 기능
     let cpData = [...data];
     if (select === "지역명") {
@@ -820,8 +771,215 @@ app.get('/api/tree/com_code', async (req, res) => {
         //  - 영산강
         parentNodeList[3].children[0].children = nodes[3].children
 
-        // 수위
-        //  - 한강
+        // // 수위
+        // //  - 한강
+        // wlv_r01_10_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R01_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // wlv_r01_11_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R01_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // wlv_r01_12_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R01_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // wlv_r01_13_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R01_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // - 낙동강
+        // // 낙동강
+        // wlv_r02_20_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R02_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 형산강
+        // wlv_r02_21_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R02_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 태화강
+        // wlv_r02_22_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R02_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 회야, 수영강
+        // wlv_r02_23_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R02_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+        
+        // // 낙동강동해
+        // wlv_r02_24_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R02_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 낙동강남해
+        // wlv_r02_25_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R02_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // - 금강
+        // // 금강
+        // wlv_r03_30_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R03_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 삽교천
+        // wlv_r03_31_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R03_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 금강서해
+        // wlv_r03_32_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R03_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 만경, 동진
+        // wlv_r03_33_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R03_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // - 영산강
+        // // 섬진강
+        // wlv_r04_40_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R04_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 섬진강남해
+        // wlv_r04_41_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R04_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 영산강
+        // wlv_r04_50_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R04_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 탐진강
+        // wlv_r04_51_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R04_SEARCH
+        // ORDER BY OBSRVT_NM ASC`
+
+        // // 영산강남해
+        // wlv_r04_52_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R04_SEARCH
+        // ORDER BY OBSRVT_NM ASC
+        // `
+
+        // // 영산강서해
+        // wlv_r04_53_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R04_SEARCH
+        // ORDER BY OBSRVT_NM ASC
+        // `
+
+        // // 영산강서해
+        // wlv_r04_53_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R04_SEARCH
+        // ORDER BY OBSRVT_NM ASC
+        // `
+
+        // // 제주도
+        // wlv_r04_60_sql = `SELECT OBSRVT_CODE, OBSRVT_NM
+        // FROM V_FLU_WLV_R04_SEARCH
+        // ORDER BY OBSRVT_NM ASC
+        // `
+
+        // r01_wlv = [
+        //     {'value': '수위_10', 'label': '한강'},
+        //     {'value': '수위_11', 'label': '안성천'},
+        //     {'value': '수위_12', 'label': '한강서해'},
+        //     {'value': '수위_13', 'label': '한강동해'}
+        // ]
+
+        // const result_wlv_r01_10 = await connection.execute(wlv_r01_10_sql);
+        // // const result_wlv_r01_11 = await connection.execute(wlv_r01_11_sql);
+        // // const result_wlv_r01_12 = await connection.execute(wlv_r01_12_sql);
+        // // const result_wlv_r01_13 = await connection.execute(wlv_r01_13_sql);
+        // const result_wlv_r02 = await connection.execute(wlv_r02_20_sql);
+        // const result_wlv_r03 = await connection.execute(wlv_r03_30_sql);
+        // const result_wlv_r04 = await connection.execute(wlv_r04_40_sql);
+
+        // // 연결 종료
+        // // await connection.close();
+
+        // // console.log(result); // 결과를 콘솔에 출력
+        // let nodes_wlv_r01_10 = [];
+        // result_wlv_r01_10.rows.forEach(data => {
+        //     const node = {
+        //         value: '수위_' + data[0],
+        //         label: data[1],
+        //         children: [],
+        //     };
+        //     nodes_wlv_r01_10.push(node)
+        // });
+        // r01_wlv[0]['children'] = nodes_wlv_r01_10
+        
+        // let nodes_wlv_r01_11 = [];
+        // result_wlv_r01_11.rows.forEach(data => {
+        //     const node = {
+        //         value: '수위_' + data[0],
+        //         label: data[1],
+        //         children: [],
+        //     };
+        //     nodes_wlv_r01_11.push(node)
+        // });
+        // r01_wlv[1]['children'] = nodes_wlv_r01_11
+
+        // let nodes_wlv_r01_12 = [];
+        // result_wlv_r01_12.rows.forEach(data => {
+        //     const node = {
+        //         value: '수위_' + data[0],
+        //         label: data[1],
+        //         children: [],
+        //     };
+        //     nodes_wlv_r01_12.push(node)
+        // });
+        // r01_wlv[2]['children'] = nodes_wlv_r01_12
+
+        // let nodes_wlv_r01_13 = [];
+        // result_wlv_r01_13.rows.forEach(data => {
+        //     const node = {
+        //         value: '수위_' + data[0],
+        //         label: data[1],
+        //         children: [],
+        //     };
+        //     nodes_wlv_r01_13.push(node)
+        // });
+        // r01_wlv[3]['children'] = nodes_wlv_r01_13
+
+        // let nodes_wlv_r02 = [];
+        // result_wlv_r02.rows.forEach(data => {
+        //     const node = {
+        //         value: '수위_' + data[0],
+        //         label: data[1],
+        //         children: [],
+        //     };
+        //     nodes_wlv_r02.push(node)
+        // });
+        // r01_wlv[1]['children'] = nodes_wlv_r02
+        // let nodes_wlv_r03 = [];
+        // result_wlv_r03.rows.forEach(data => {
+        //     const node = {
+        //         value: '수위_' + data[0],
+        //         label: data[1],
+        //         children: [],
+        //     };
+        //     nodes_wlv_r03.push(node)
+        // });
+        // r01_wlv[2]['children'] = nodes_wlv_r03
+        // let nodes_wlv_r04 = [];
+        // result_wlv_r04.rows.forEach(data => {
+        //     const node = {
+        //         value: '수위_' + data[0],
+        //         label: data[1],
+        //         children: [],
+        //     };
+        //     nodes_wlv_r04.push(node)
+        // });
+        // r01_wlv[3]['children'] = nodes_wlv_r04
+        // console.log('803 r01_wlv[0]', r01_wlv[0])
         r01_wlv = [{
             'value': '수위_10',
             'label': '한강',
@@ -3605,12 +3763,33 @@ app.post('/api/python/preprocessing/one', (req, res) => {
             }
         }
         if (!errorcheck) {
+            folderPath = './.share/.dataprocessing'
+            if (!fs.existsSync(folderPath)) {
+                // 폴더가 없으면 폴더 생성
+                fs.mkdirSync(folderPath);
+                console.log(`폴더가 생성되었습니다: ${folderPath}`);
+            }
+            const jsonContent = JSON.stringify(passdata);
+            const hash = crypto.createHash('sha256').update(jsonContent).digest('hex');
+            const uniqueFilename = `${hash}.json`;
+            console.log('uniqueFilename', uniqueFilename)
+
+            if (!fs.existsSync(`./.share/.dataprocessing/${uniqueFilename}`)) {
+                fs.writeFile(`./.share/.dataprocessing/${uniqueFilename}`, jsonContent, 'utf8', (err) => {
+                    if (err) {
+                      console.error('Error writing JSON file:', err);
+                    } else {
+                      console.log('JSON file saved successfully');
+                    }
+                });
+            }
+            passdataFilePath = `./.share/.dataprocessing/${uniqueFilename}`;
             let options = {
                 pythonPath: pythonpath,
                 scriptPath: `./script/`,
-                args: [`${func}`, `${method}`, `${att}`, `${id}`, `${key}`, `${JSON.stringify(passdata)}`]
+                args: [`${func}`, `${method}`, `${att}`, `${id}`, `${key}`, `${passdataFilePath}`]
             }
-
+            // console.log('options', options)
             var pyshell = new PythonShell('processing.py', options);
             
             pyshell.on('message', function (message) {
@@ -3709,7 +3888,8 @@ app.get('/api/region/:regions', (req, res) => { // frontend Data>Database 지도
         if (err) {
             res.json({ error: 'no data' })
         } else {
-            res.json({ lat: Number(result.rows[0][region]), lon: Number(result.rows[1][region]) });
+            // res.json({ lat: Number(result.rows[0][region]), lon: Number(result.rows[1][region]) });
+            res.json({ lat: 128.435988, lon: 37.4037668 });
         }
     })
 })
