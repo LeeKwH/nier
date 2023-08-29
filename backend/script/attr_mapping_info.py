@@ -1,5 +1,6 @@
 def get_data():
     data = {
+        # 수질
         '총대장균군수': 'IEM_1002',
         '분원성대장균군수': 'IEM_1004',
         '납': 'IEM_1005',
@@ -52,6 +53,32 @@ def get_data():
         '헥사클로로벤젠': 'IEM_1094',
         '니켈': 'IEM_1095',
         '바륨': 'IEM_1096',
-        '셀레늄': 'IEM_1097'
+        '셀레늄': 'IEM_1097',
+        # 조류
+        '수위': 'WLV',
+        # 강수량
+        '강수량': 'RAINFL',
+        # 댐
+        '저수위': 'LOW_WLV',
+        '유입량': 'INFLOW_QY',
+        '방류량': 'DCWTR_QY',
+        '저수량': 'CMNUSE_QY',
+        # 유량
+        '유량': 'FLUX',
+        # 조류
+        '조류_수온': 'ITEM_TEMP_SURF',
+        'pH': 'ITEM_PH_SURF',
+        '조류_DO': 'ITEM_DOC_SURF',
+        '조류_투명도': 'ITEM_TRANSPARENCY',
+        '탁도': 'ITEM_TURBIDITY',
+        'Chl-a': 'ITEM_SUF_CLOA',
+        '유해남조류 세포수': 'ITEM_BLUE_GREEN_ALGAE',
+        'Microcystis': 'ITEM_BGA_MICROCYSTIS',
+        'Anabaena': 'ITEM_BGA_ANABAENA',
+        'Oscillatoria': 'ITEM_BGA_OSILLATORIA',
+        'Aphanizomenon': 'ITEM_BGA_APHANIZOMENON',
+        '지오스민': 'ITEM_GEOSMIN',
+        '2MIB': 'ITEM_2MIB',
+        'Microcystin-LR': 'ITEM_MICROCYSTIN'
     }
     return data
