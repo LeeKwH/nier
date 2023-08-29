@@ -77,6 +77,9 @@ use_var =[]
 for var in variables:
     category, site, item = var.split('-') #지금 psql조회는 지점명(파일명)으로 하기때문에 중복지점명 있을경우 오류발생
     use_var.append(category+'_'+site+'_'+item)
+    if category == '조류':
+        if item in ['수온', 'DO', '투명도']:
+            item = f'조류_{item}'
     vals = attr_data[item]
     if category=='수질':
         table = 'V_MSR_WQMN_DAY'
