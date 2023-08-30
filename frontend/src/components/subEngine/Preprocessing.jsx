@@ -71,7 +71,7 @@ export default function Preprocessing() {
             }
         })
         valtmp = [...new Set(valtmp)];
-        valtmp = valtmp.map((item) => item.replace(/\(.*\)/g, ''))
+        // valtmp = valtmp.map((item) => item.replace(/\(.*\)/g, ''))
         console.log('75 valtmp', valtmp)
         if (valtmp !== proselectval) setProselectval(valtmp);
     }
