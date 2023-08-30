@@ -70,7 +70,7 @@ export default function Training(){
         {field:'config', headerName:'Config', headerClassName:'datagrid-header',flex:0.5,align:'center', renderCell:(params)=>(
             params.value===true? <CheckRoundedIcon color="success"/>:<div/>)},
         {field:'cosine', headerName:'Cos_sim', headerClassName:'datagrid-header',flex:1},
-        {field:'rmsle', headerName:'RMSLE', headerClassName:'datagrid-header',flex:1},
+        {field:'rmse', headerName:'RMSE', headerClassName:'datagrid-header',flex:1},
         {field:'mape', headerName:'MAPE', headerClassName:'datagrid-header',flex:1},
         {field:'status', headerName:'Status', headerClassName:'datagrid-header',flex:0.5,sortable:false, align:'center', renderCell:(params)=>(
             <Tooltip title={params.value} placement="right-start">
@@ -183,7 +183,7 @@ export default function Training(){
                         setResultDataset(data.datasets);
                         setResultLabel(data.labels);
                         const tmp = {...calresult};
-                        tmp[selectedModel] = {'RMSLE':data.RMSLE, 'MAPE':data.MAPE,'Cos_sim':data['Cos_sim']};
+                        tmp[selectedModel] = {'RMSE':data.RMSE, 'MAPE':data.MAPE,'Cos_sim':data['Cos_sim']};
                         console.log(tmp)
                         setCalresult(tmp);
                         setIsResultLoading(false);
@@ -295,7 +295,7 @@ export default function Training(){
             tmp.map(d=>{
                 if(Object.keys(calresult).includes(d.model)){
                     const tmpresult = calresult[d.model];
-                    d['rmsle'] = tmpresult.RMSLE;
+                    d['rmse'] = tmpresult.RMSE;
                     d['mape'] = tmpresult.MAPE;
                     d['cosine'] = tmpresult.Cos_sim;
                 }
