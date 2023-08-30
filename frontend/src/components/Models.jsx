@@ -911,7 +911,7 @@ export default function Models(){
                                     </List>
                                     <div style={{display:'flex', justifyContent:'center',marginTop:'0.5rem'}}>
                                         <Button variant="contained" size="small" sx={{width:'40%',marginX:'0.2rem'}} onClick={handleImport}>Import</Button>
-                                        <Button variant="contained" size="small" sx={{width:'40%',marginX:'0.2rem'}} onClick={handleClose}>Cancle</Button>
+                                        <Button variant="contained" size="small" sx={{width:'40%',marginX:'0.2rem'}} onClick={handleClose}>Cancel</Button>
                                     </div>
                                 </div>
                                 
