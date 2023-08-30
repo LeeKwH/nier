@@ -60,7 +60,7 @@ export default function Forecast(){
         {field:'yval', headerName:'Y Valuable', flex:1}, // 모델 yvar 
         {field:'creator', headerName:'Creator', flex:0.5}, // 모델 생성자 
         {field:'cosine', headerName:'Cos_sim', flex:0.5}, // 코사인 유사도
-        {field:'rmsle', headerName:'RMSLE', flex:0.5}, // RMSLE
+        {field:'rmse', headerName:'RMSE', flex:0.5}, // RMSE
         {field:'mape', headerName:'MAPE', flex:0.5}, // MAP
     ];
     const [debugRow, setDebugRow] = useState([]);
@@ -101,7 +101,7 @@ export default function Forecast(){
                             model:d,
                             yval:data[d].yval,
                             cosine:data[d].Cos_sim,
-                            rmsle:data[d].RMSLE,
+                            rmse:data[d].RMSE,
                             mape:data[d].MAPE,
                         })
                     })
@@ -179,10 +179,6 @@ export default function Forecast(){
             setIsForecast(true);
             const models = select.map(d=>modelRow[d-1]);
             // const models = select.map(d=>modelRow[d-1]);
-            console.log('userid', userid)
-            console.log('models', models)
-            console.log('std', forecastStd.format('YYYY-MM-DD'))
-            console.log('end', forecastEnd.format('YYYY-MM-DD'))
             fetch('api/python/forecast',{
                 method:'POST',
                 headers:{

@@ -171,7 +171,7 @@ class MainModel(nn.Module):
                     modules.append(m(**layer['arg']))
 
         self.seq = nn.Sequential(*modules)
-        self.fc = nn.LazyLinear(self.outseq)
+        self.fc = nn.Linear(self.seq[-1].out_features, self.outseq)
 
 
     def forward(self, x):

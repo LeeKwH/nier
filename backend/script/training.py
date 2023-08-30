@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_percentage_error, mean_squared_log_error
+from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 import pandas as pd
 import numpy as np
 from numpy.linalg import norm
@@ -19,7 +19,8 @@ nowpath = os.getcwd()
 
 user_name = sys.argv[1]
 model_name = sys.argv[2]
-
+# user_name = 'nier'
+# model_name = 'model_test'
 dir_script = f'{nowpath}/.user/{user_name}/.model/{model_name}/'
 dir_model_save = f'{nowpath}/.user/{user_name}/.model/{model_name}/{model_name}_params.pth'
 modelinfo = json.load(open(dir_script+'modelinfo.json', encoding='UTF8'))
@@ -62,7 +63,8 @@ test_dates = target.index
 
 target = premodel.create_dataset(data=target, n_in=0, n_out=Outseq,dropnan=False).bfill().ffill()
 
-
+print('inputs', inputs)
+print('inputs shape', inputs.shape)
 # 1d
 input1d = inputs.values.reshape(inputs.shape[0],inputs.shape[1])
 # 2d
@@ -148,7 +150,10 @@ else:
         model = C.AttentionLSTM(datas[0]['in'],Outseq).to(device)
     else:
         model = MM.MainModel(datas,7).to(device)
-
+    print('train_number', train_number)
+    print('valid_number', valid_number)
+    print('inputs', inputs)
+    print('inputs len', len(inputs))
     train_inputs, train_target = inputs[:train_number], target[:train_number]
     val_inputs, val_target = inputs[train_number+1:valid_number],target[train_number+1:valid_number]
     test_inputs, test_target = inputs[valid_number+1:], target[valid_number+1:]
@@ -163,6 +168,7 @@ else:
     # generate dataset
     train_dataset = TensorDataset(train_inputs, train_target)
     val_dataset   = TensorDataset(val_inputs, val_target)
+    print('val_dataset', len(val_dataset))
     test_dataset  = TensorDataset(test_inputs, test_target)
 
 
@@ -173,10 +179,11 @@ test_dataloader  = DataLoader(test_dataset, batch_size=batch_size, shuffle=False
 
 # define loss and optimizer
 exec('criterion = nn.{}Loss()'.format(learn_config['loss function']))
+print('model', model)
 exec('optimizer = torch.optim.{0}(model.parameters(), lr={1})'.format(learn_config['optimizer'],learn_config['learning rate']))
 
 num_epochs = learn_config['epoch']
-
+print('num_epochs', num_epochs)
 with open(dir_script+'log.txt', "w") as f:
     for epoch in range(num_epochs):
         model.train()
@@ -185,12 +192,12 @@ with open(dir_script+'log.txt', "w") as f:
             for batch_data in train_dataloader:
                 # convert batch to tensor
                 batch_targets = batch_data[-1].to(device)
+                # update weights and biases with backprop
+                optimizer.zero_grad()
                 # run forward pass
                 outputs = model(batch_data[:-1])
                 # calculate loss
                 loss = criterion(outputs, batch_targets.float())
-                # update weights and biases with backprop
-                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
@@ -210,12 +217,12 @@ with open(dir_script+'log.txt', "w") as f:
             for batch_inputs, batch_targets in train_dataloader:
                 # convert batch to tensor
                 batch_targets = batch_targets.to(device)
+                # update weights and biases with backprop
+                optimizer.zero_grad()
                 # run forward pass
                 outputs = model(batch_inputs)
                 # calculate loss
                 loss = criterion(outputs, batch_targets.float())
-                # update weights and biases with backprop
-                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
@@ -274,12 +281,17 @@ y_eval = y_pred.to_numpy()
 y_eval_true = y_true.to_numpy()
 
 #Evaluation metrics
-test_Cos_sim = np.round(np.dot(y_eval_true.reshape(-1), y_eval.reshape(-1))/(norm(y_eval_true.reshape(-1))*norm(y_eval.reshape(-1))),3) #scale -1~1
+norm_y_eval_true = norm(y_eval_true.reshape(-1))
+norm_y_eval = norm(y_eval.reshape(-1))
+if norm_y_eval_true == 0 or norm_y_eval == 0:
+    test_Cos_sim = 0.0  # 두 벡터 중 하나의 크기가 0인 경우 코사인 유사도는 0으로 설정
+else:
+    test_Cos_sim = np.round(np.dot(y_eval_true.reshape(-1), y_eval.reshape(-1))/(norm(y_eval_true.reshape(-1))*norm(y_eval.reshape(-1))),3) #scale -1~1
 test_MAPE = np.round(mean_absolute_percentage_error(y_eval_true, y_eval),2)
-test_RMSLE = np.round(np.sqrt(mean_squared_log_error(y_eval_true, y_eval)),1)
+test_RMSE = np.round(np.sqrt(mean_squared_error(y_eval_true, y_eval)),1)
 
 with open(dir_script+'calresult.json', 'w') as f:
-    json.dump({"MAPE":test_MAPE, "RMSLE":test_RMSLE, "Cos_sim":test_Cos_sim},f)
+    json.dump({"MAPE":test_MAPE, "RMSE":test_RMSE, "Cos_sim":test_Cos_sim},f)
 
 with open(dir_script+'testresult.json', 'w', encoding='utf-8') as f:
     json.dump({"test_yhat":y_pred.to_dict(), "test_y":y_true.to_dict(),'date':test_date.to_list(),'len':len(test_date)},f, ensure_ascii=False)
