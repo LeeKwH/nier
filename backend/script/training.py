@@ -17,10 +17,10 @@ from torch.utils.tensorboard import SummaryWriter
 sys.path.append('./')
 nowpath = os.getcwd()
 
-# user_name = sys.argv[1]
-# model_name = sys.argv[2]
-user_name = 'nier'
-model_name = 'model_test'
+user_name = sys.argv[1]
+model_name = sys.argv[2]
+# user_name = 'nier'
+# model_name = 'model_test'
 dir_script = f'{nowpath}/.user/{user_name}/.model/{model_name}/'
 dir_model_save = f'{nowpath}/.user/{user_name}/.model/{model_name}/{model_name}_params.pth'
 modelinfo = json.load(open(dir_script+'modelinfo.json', encoding='UTF8'))
