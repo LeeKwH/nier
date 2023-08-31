@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext } from "react";
 import { StateContext } from "../../context/Manage";
-import { IconButton, FormControl, MenuItem, Select, Skeleton,Button, Grid, Card, CssBaseline, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper} from "@mui/material";
+import { IconButton,FormControl,MenuItem,Select, Skeleton, InputLabel, Button, Grid, Card, CssBaseline, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,  Modal } from "@mui/material";
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 
 
@@ -21,6 +21,7 @@ import {
 } from "chart.js";
 import { Line } from 'react-chartjs-2';
 
+import ReactFileReader from "react-file-reader";
 
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -85,6 +86,90 @@ export default function Database() {
     const [searchData, setSearchData] = useState('');
     const [searchSelect, setSearchSelect] = useState('지역명');
     const [map, setMap] = useState();
+
+    const [fileName, setFileName] = useState('');
+    const [dataopen, setDataopen] = useState(false);
+    const handleOpen = () => setDataopen(true);
+    const handleClose = () => {
+        setFileName('');
+        setAdds('');
+        setAddc('');
+        setAddcc('');
+        setAddsi('');
+        setAddData('');
+        setDataopen(false);
+    };
+
+    const [reload,setReload] = useState(true);
+
+    const [adds,setAdds] = useState('');
+    const [addc,setAddc] = useState('');
+    const [addcc,setAddcc] = useState('');
+    const [addsi,setAddsi] = useState('');
+
+    const [addData, setAddData] = useState('');
+
+
+    const uploadFile = (files) =>{
+        var read = new FileReader();
+        var name = files[0].name;
+        read.onload = function(e){
+            FileSet(read.result,name)
+        }
+        read.readAsText(files[0],'euc-kr');
+    }
+
+    const FileSet = (file,name) =>{
+        var splitData = file.split('\r\n');
+        var headers = splitData[0].split(',');
+        if(!['조사일자','일자','date'].includes(headers[0])){
+            alert('일자(date, 일자, 조사일자) 열이 없습니다. 데이터 파일의 첫 번째 행은 헤더 정보로 지정해주세요.(e.g. date, 조류, 수온)\n')
+            setFileName('');
+            setAddData('');
+        }else{
+            setFileName(name);
+            setAddData(splitData);
+        }
+    }
+
+    const handleAddData = (e) =>{
+        e.preventDefault();
+        if(!window.confirm(`${adds}, ${addc}, ${addsi} 데이터베이스에 등록합니다. 등록하시겠습니까?`)){
+            return;
+        }else{
+            fetch(`/api/updb`,{
+                method:'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'system': adds,
+                    'category':addc,
+                    'category_s':addcc,
+                    'name':addsi,
+                    'data':addData
+                })
+            })
+            .then(res => res.json())
+            .then(res=>{
+                if(res.hasOwnProperty('error')){
+                    if(res.error === 'exist') alert('이미 존재하는 등록명입니다. 등록명 변경 후 등록해주세요.');
+                    else{
+                        alert('error : ', res.error);
+                    }
+                }else{
+                    alert('등록완료');
+                    setReload(!reload);
+                    handleClose();
+                }
+            })
+        }
+    }
+
+    // 데이터 종류 - 데이터 종류 세부 초기화
+    useEffect(()=>{
+        setAddcc('');
+    },[addc])
 
     const getModifiedLabel = (node) => {
         const hasIconButton = /<IconButton[^>]*>.*<\/IconButton>/.test(node.label);
@@ -300,7 +385,7 @@ export default function Database() {
 
     // Select btn click handle
     const handleSelectBtn = () => {
-        const tmpselect = handleShowselected(selected)
+        const tmpselect = [...new Set(ShowSelected.concat(handleShowselected(selected)))]
         const tmpprocselect = handleShowselectedForProc(selected)
         setShowSelected(tmpselect);
         changeVal(tmpprocselect)
@@ -394,20 +479,29 @@ export default function Database() {
                     md={4.5}
                     sx={{ height: '100%' }}
                 >
-                    <div className="select-var-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingRight: '2%', paddingTop: '2%' }}>
+                    <div className="select-var-header" style={{display:'flex',alignItems:'center',justifyContent:'center',paddingRight:'3.5%',paddingLeft:'2%',paddingTop:'2%'}}>
+                        <Button
+                            className="select-reset-btn"
+                            sx={{ mx:'0.2rem',width:'33%'}}
+                            variant="contained"
+                            size="small"
+                            onClick={handleOpen}
+                        >
+                            Data Import
+                        </Button>
                         <Button
                             className="select-mv-btn"
-                            sx={{ mx: '1rem', width: '50%' }}
+                            sx={{ mx:'0.2rem',width:'33%'}}
                             variant="outlined"
                             size="small"
                             onClick={handleSelectBtn}
                             aria-label="move selected"
-                        >
+                            >
                             &gt;
                         </Button>
                         <Button
                             className="select-reset-btn"
-                            sx={{ mx: '1rem', width: '50%' }}
+                            sx={{ mx:'0.2rem', width:'33%' }}
                             variant="contained"
                             size="small"
                             onClick={handleResetBtn}
@@ -556,6 +650,96 @@ export default function Database() {
 
                 {/* Draw Map and Data End */}
             </Grid>
+            {/* Data Import Modal Start */}
+            <Modal
+                open={dataopen}
+                onClose={handleClose}
+                aria-labelledby="modal-modal-title"
+                aria-describedby="modal-modal-description"
+            >
+                <Paper className="user-add-modal" style={{display:'flex',flexDirection:'column',width:'40vw',height:'35vh',position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',padding:'1rem'}}>
+                    <h4><b>Data Import</b></h4>
+                    <div className="data-import-page" style={{width:'100%',height:'26vh',display:'flex',flexDirection:'column',alignItems:'center', padding:'0.5rem'}}>
+                        <div className="data-import-notice" style={{display:'flex',flexDirection:'column',width:'100%',height:'6rem',backgroundColor:'#FDFAEB',padding:'0.5rem'}}>
+                            <b style={{fontFamily:'Basic',marginBottom:'0.3rem'}}> ⁕ .csv 파일을 선택한 다음 수계 및 데이터 종류를 선택하고 등록명(지역명)을 입력하면 해당 데이터가 데이터베이스에 추가됩니다.</b>
+                            <b style={{fontFamily:'Basic', color:'#FA584E'}}> ⁕ 이미 데이터베이스에 추가된 등록명으로는 등록할 수 없습니다.</b>
+                            <b style={{fontFamily:'Basic', color:'#FA584E'}}> ⁕ 데이터의 첫 번째 행은 'date', '변수명1', '변수명2'와 같은 형식이 되어야 합니다.</b>
+                        </div>
+                        <div className="data-import-path" style={{width:'100%', display:'flex',alignItems:'center',justifyContent:'space-around'}}>
+                            <Paper sx={{width:'30vw',height:'2.2rem', marginTop:'0.5rem',paddingLeft:'1rem',paddingY:'0.3rem'}}>{fileName}</Paper>
+                            <ReactFileReader handleFiles = {uploadFile} fileTypes={'.csv'}>
+                                <Button
+                                    sx={{width:'7.5vw',marginTop:'0.5rem',height:'2.2rem'}}
+                                    variant="contained"
+                                    size="small"
+                                >
+                                    데이터 파일 불러오기
+                                </Button>
+                            </ReactFileReader>
+                        </div>
+                        <Paper className="data-import-set" sx={{width:'100%',height:'12vh',marginTop:'1rem', padding:'1rem',display:'flex', flexDirection:'column'}}  elevation={3}>
+                            <h6><b>Import Data Options</b></h6>
+                            <div className="data-import-set-under" style={{width:'100%',height:'100%',display:'flex', padding:'1rem'}}>
+                                <FormControl sx={{minWidth:150}}>
+                                    <InputLabel id="data-import-system-label">수계</InputLabel>
+                                    <Select
+                                        labelId="data-import-system"
+                                        id="data-import-system-id"
+                                        value={adds}
+                                        label="수계"
+                                        onChange={(e)=>setAdds(e.target.value)}
+                                    >
+                                        <MenuItem value={"금강"}>금강</MenuItem>
+                                        <MenuItem value={"낙동강"}>낙동강</MenuItem>
+                                        <MenuItem value={"영산강"}>영산강</MenuItem>
+                                        <MenuItem value={"한강"}>한강</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <FormControl sx={{minWidth:150,marginX:'1rem'}}>
+                                    <InputLabel id="data-import-category-label">데이터 종류</InputLabel>
+                                    <Select
+                                        labelId="data-import-category"
+                                        id="data-import-category-id"
+                                        value={addc}
+                                        label="데이터 종류"
+                                        onChange={(e)=>setAddc(e.target.value)}
+                                    >
+                                        <MenuItem value={"기상"}>기상</MenuItem>
+                                        <MenuItem value={"댐"}>댐</MenuItem>
+                                        <MenuItem value={"보"}>보</MenuItem>
+                                        <MenuItem value={"수문"}>수문</MenuItem>
+                                        <MenuItem value={"수질"}>수질</MenuItem>
+                                        <MenuItem value={"조류"}>조류</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <FormControl sx={{minWidth:150, marginRight:'1rem'}} disabled={['기상','조류'].includes(addc)}>
+                                    <InputLabel id="data-import-category-label">데이터 간격</InputLabel>
+                                    <Select
+                                        labelId="data-import-category-2"
+                                        id="data-import-category-2-id"
+                                        value={addcc}
+                                        label="데이터 간격"
+                                        onChange={(e)=>setAddcc(e.target.value)}
+                                    >
+                                        <MenuItem value={"일간"}>일간</MenuItem>
+                                        {addc === '수질'?<MenuItem value={"주간"}>주간</MenuItem>:null}
+                                    </Select>
+                                </FormControl>
+                                <TextField 
+                                    sx={{width:'100%'}}
+                                    label="등록명(지역명)"
+                                    onChange={e=>setAddsi(e.target.value)}
+                                />
+                            </div>
+                        </Paper>
+                    </div>
+                    <div className="data-import-foot" style={{height:'4vh', display:'flex',flexDirection:'row-reverse'}}>
+                        <Button variant="outlined" size="small" sx={{margin:'0.5rem'}} onClick={handleClose}>취소</Button>
+                        <Button variant="contained" size="small" sx={{margin:'0.5rem'}} disabled={fileName===''||adds===''||addsi===''||(['댐','보','수질'].includes(addc)&&addcc==='')||addc===''} onClick={handleAddData}>등록</Button>
+                    </div>
+                </Paper>
+            </Modal>
+            {/* Data Import Modal End */}
         </div>
 
     )
