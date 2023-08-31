@@ -3480,7 +3480,7 @@ app.get('/api/tree/com_code', async (req, res) => {
                 const swmn_emptyNodes = findEmptyLabel(swmn_list[i]);
                 for (const emptyNode of swmn_emptyNodes) {
                     const att_list = [];
-                    const att_swmn_nm = ["수온(℃)", "pH", "DO(㎎/L)", "투명도", "탁도", "Chl-a (㎎/㎥)", "유해남조류 세포수 (cells/㎖)", "Microcystis", "Anabaena", "Oscillatoria", "Aphanizomenon", "지오스민(ng/L)", "2MIB(ng/L)", "Microcystin-LR (μg/L)"]
+                    const att_swmn_nm = ["수온(℃)", "pH", "DO(㎎/L)", "투명도", "탁도", "Chl-a(㎎/㎥)", "유해남조류 세포수(cells/㎖)", "Microcystis", "Anabaena", "Oscillatoria", "Aphanizomenon", "지오스민(ng/L)", "2MIB(ng/L)", "Microcystin-LR(μg/L)"]
                     // const att_swmn_nm = ["수온", "pH", "DO", "투명도", "탁도", "Chl-a", "유해남조류 세포수", "Microcystis", "Anabaena", "Oscillatoria", "Aphanizomenon", "지오스민", "2MIB", "Microcystin-LR"]
                     const att_swmn_code = ["ITEM_TEMP_SURF", "ITEM_PH_SURF", "ITEM_DOC_SURF", "ITEM_TRANSPARENCY", "ITEM_TURBIDITY", "ITEM_SUF_CLOA", "ITEM_BLUE_GREEN_ALGAE", "ITEM_BGA_MICROCYSTIS", "ITEM_BGA_ANABAENA", "ITEM_BGA_OSILLATORIA", "ITEM_BGA_APHANIZOMENON", "ITEM_GEOSMIN", "ITEM_2MIB", "ITEM_MICROCYSTIN"]
                     for (let i = 0; i < att_swmn_nm.length; i++) {

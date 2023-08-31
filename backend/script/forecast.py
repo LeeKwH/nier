@@ -132,6 +132,7 @@ for var in variables:
     current_db = connection
     var_df = pd.read_sql_query(sql, connection)
     var_df.rename(columns={'D':'date'}, inplace = True)
+    item = item.replace('조류_', '')
     var_df.columns = ['date'] + [category+'_'+site +'_'+item]
     var_df[var_df.columns[0]] = pd.DatetimeIndex(var_df[var_df.columns[0]])
     var_df = var_df.set_index(var_df[var_df.columns[0]])
