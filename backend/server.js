@@ -3725,7 +3725,7 @@ app.post('/api/python/preprocessing/one', (req, res) => {
         let errorcheck = false;
 
         // 예외처리
-        if (func === 'InterpolUnivar' && (method === 'nearest' || method === 'quadratic' || method === 'cubic')) {
+        if (func === 'InterpolUnivar' && (method === 'nearest' || method === 'quadratic' || method === 'cubic' || method === 'time' || method === 'slinear' || method === "piecewise_polynomial" || method === 'pchip' || method === 'akima' || method === 'cubicspline' || method === 'polynomial' || method === 'spline')) {
 
             switch (method) {
                 case 'nearest':
@@ -3738,6 +3738,86 @@ app.post('/api/python/preprocessing/one', (req, res) => {
                         }
                     }
                     break;
+                case 'time':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error: time 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'slinear':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error: slinear 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'piecewise_polynomial':
+                for (let vidx = 0; vidx < vals.length; vidx++) {
+                    let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                    if (useD.length <= 1) {
+                        errorcheck = true;
+                        res.json({ error: `error: piecewise_polynomial 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                        break;
+                    }
+                }
+                break;
+                case 'pchip':
+                for (let vidx = 0; vidx < vals.length; vidx++) {
+                    let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                    if (useD.length <= 1) {
+                        errorcheck = true;
+                        res.json({ error: `error:  pchip 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                        break;
+                    }
+                }
+                break;
+                case 'akima':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error:  akima 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                break;
+                case 'cubicspline':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error:  cubicspline 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                break;
+                case 'spline':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error:  spline 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                break;
+                case 'polynomial':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error:  polynomial 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                break;
                 case 'quadratic':
                     for (let vidx = 0; vidx < vals.length; vidx++) {
                         let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
@@ -4024,7 +4104,7 @@ app.post('/api/python/train', (req, res) => {
     const models = data.model;
 
     // data { userid: 'admin', model: [ 'abc' ] }
-
+    
     models.map((d, idx) => {
         fs.writeFile(`./.user/${user}/.model/${d}/status.config`, 'running', (err) => {
             if (err) console.log(err);
@@ -4036,7 +4116,8 @@ app.post('/api/python/train', (req, res) => {
             scriptPath: `./script/`,
             args: [`${user}`,`${d}`]
         }
-
+        console.log(`${user}`)
+        console.log(`${d}`)
         var pyshell = new PythonShell('training.py',options);
         pyshell.on('message', function (message) {
             // received a message sent from the Python script (a simple "print" statement)
