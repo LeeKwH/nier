@@ -28,10 +28,9 @@ app.use(cookieParser());
 app.use('/api/menual', express.static(path.join(__dirname, '.file')));
 app.use('/api/tile', express.static(path.join(__dirname, 'map/tile')))
 
-
 // NIER변경
-const pythonpath = 'C:\\Users\\user\\Anaconda3\\envs\\nier_env\\python';
-const pythonpathforattn = 'C:\\Users\\user\\Anaconda3\\envs\\nier_attn\\python';
+const pythonpath = 'C:\\Anaconda3\\envs\\nier_env\\python';
+const pythonpathforattn = 'C:\\Anaconda3\\envs\\nier_attn\\python';
 
 /**
  * make Query for many data 
@@ -160,7 +159,6 @@ const getDates = (std, end) => {
     }
     return dateArray;
 }
-
 
 /**
  * make Object from Region data
@@ -473,10 +471,45 @@ const SeachData = (data, select, search) => { // frontend의 Database 화면, �
     if (select === "지역명") {
         data.map((one, oneidx) => {
             one.children.map((two, twoidx) => {
-                two.children.map((region, ridx) => {
-                    if (!region.label.includes(search))
-                        delete cpData[oneidx].children[twoidx].children[ridx];
-                })
+                console.log('twoidx:', twoidx);
+                if (['수질'].includes(two.label)){
+                    two.children.map((three, threeidx) => {
+                        three.children.map((four, fouridx) => {
+                            four.children.map((region, ridx) => {
+                                if (!region.label.includes(search))
+                                    delete cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children[ridx];
+                            })
+                            cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children = cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children.filter(d => d !== undefined && d !== null);
+                            if (cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children.length === 0) delete cpData[oneidx].children[twoidx].children[threeidx].children[fouridx];
+                        })
+                        cpData[oneidx].children[twoidx].children[threeidx].children = cpData[oneidx].children[twoidx].children[threeidx].children.filter(d => d !== undefined && d !== null);
+                        if (cpData[oneidx].children[twoidx].children[threeidx].children.length === 0) delete cpData[oneidx].children[twoidx].children[threeidx];
+                    })
+                    cpData[oneidx].children[twoidx].children = cpData[oneidx].children[twoidx].children.filter(d => d !== undefined && d !== null);
+                    // if (cpData[oneidx].children[twoidx].children.length === 0) delete cpData[oneidx].children[twoidx];
+                }
+                if (['수위', '강수량', '댐', '유량'].includes(two.label)){
+                    two.children.map((three, threeidx) => {
+                        three.children.map((region, ridx) => {
+                            // console.log('region.label:', region.label);
+                            if (!region.label.includes(search))
+                                delete cpData[oneidx].children[twoidx].children[threeidx].children[ridx];
+                        })
+                        cpData[oneidx].children[twoidx].children[threeidx].children = cpData[oneidx].children[twoidx].children[threeidx].children.filter(d => d !== undefined && d !== null);
+                        if (cpData[oneidx].children[twoidx].children[threeidx].children.length === 0) delete cpData[oneidx].children[twoidx].children[threeidx];
+                    })
+                    cpData[oneidx].children[twoidx].children = cpData[oneidx].children[twoidx].children.filter(d => d !== undefined && d !== null);
+                    // if (cpData[oneidx].children[twoidx].children.length === 0) delete cpData[oneidx].children[twoidx];
+                }
+                if (['조류'].includes(two.label)){
+                    two.children.map((region, ridx) => {
+                        // console.log('region.label:', region.label);
+                        if (!region.label.includes(search))
+                            delete cpData[oneidx].children[twoidx].children[ridx];
+                    })
+                    cpData[oneidx].children[twoidx].children = cpData[oneidx].children[twoidx].children.filter(d => d !== undefined && d !== null);
+                    // if (cpData[oneidx].children[twoidx].children.length === 0) delete cpData[oneidx].children[twoidx];
+                }
                 cpData[oneidx].children[twoidx].children = cpData[oneidx].children[twoidx].children.filter(d => d !== undefined && d !== null);
                 if (cpData[oneidx].children[twoidx].children.length === 0) delete cpData[oneidx].children[twoidx];
             })
@@ -489,16 +522,54 @@ const SeachData = (data, select, search) => { // frontend의 Database 화면, �
     else if (select === "변수명") {
         data.map((one, oneidx) => {
             one.children.map((two, twoidx) => {
-                two.children.map((region, ridx) => {
-                    region.children.map((varname, vidx) => {
-                        if (!varname.label.includes(search))
-                            delete cpData[oneidx].children[twoidx].children[ridx].children[vidx];
+                if (['수질'].includes(two.label)){
+                    two.children.map((three, threeidx) => {
+                        three.children.map((four, fouridx) => {
+                            four.children.map((region, ridx) => {
+                                region.children.map((varname, vidx) => {
+                                    if (!varname.label.includes(search))
+                                        delete cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children[ridx].children[vidx];
+                                })
+                                cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children[ridx].children = cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children[ridx].children.filter(d => d !== undefined && d !== null);
+                                if (cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children[ridx].children.length === 0) delete cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children[ridx];
+                            })
+                            cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children = cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children.filter(d => d !== undefined && d !== null);
+                            if (cpData[oneidx].children[twoidx].children[threeidx].children[fouridx].children.length === 0) delete cpData[oneidx].children[twoidx].children[threeidx].children[fouridx];
+                        })
+                        cpData[oneidx].children[twoidx].children[threeidx].children = cpData[oneidx].children[twoidx].children[threeidx].children.filter(d => d !== undefined && d !== null);
+                        if (cpData[oneidx].children[twoidx].children[threeidx].children.length === 0) delete cpData[oneidx].children[twoidx].children[threeidx];
                     })
-                    cpData[oneidx].children[twoidx].children[ridx].children = cpData[oneidx].children[twoidx].children[ridx].children.filter(d => d !== undefined && d !== null);
-                    if (cpData[oneidx].children[twoidx].children[ridx].children.length === 0) delete cpData[oneidx].children[twoidx].children[ridx];
-                })
-                cpData[oneidx].children[twoidx].children = cpData[oneidx].children[twoidx].children.filter(d => d !== undefined && d !== null);
-                if (cpData[oneidx].children[twoidx].children.length === 0) delete cpData[oneidx].children[twoidx];
+                    cpData[oneidx].children[twoidx].children = cpData[oneidx].children[twoidx].children.filter(d => d !== undefined && d !== null);
+                    if (cpData[oneidx].children[twoidx].children.length === 0) delete cpData[oneidx].children[twoidx];
+                }
+                if (['수위', '강수량', '댐', '유량'].includes(two.label)){
+                    two.children.map((three, threeidx) => {
+                        three.children.map((region, ridx) => {
+                            region.children.map((varname, vidx) => {
+                                if (!varname.label.includes(search))
+                                    delete cpData[oneidx].children[twoidx].children[threeidx].children[ridx].children[vidx];
+                            })
+                            cpData[oneidx].children[twoidx].children[threeidx].children[ridx].children = cpData[oneidx].children[twoidx].children[threeidx].children[ridx].children.filter(d => d !== undefined && d !== null);
+                            if (cpData[oneidx].children[twoidx].children[threeidx].children[ridx].children.length === 0) delete cpData[oneidx].children[twoidx].children[threeidx].children[ridx];
+                        })
+                        cpData[oneidx].children[twoidx].children[threeidx].children = cpData[oneidx].children[twoidx].children[threeidx].children.filter(d => d !== undefined && d !== null);
+                        if (cpData[oneidx].children[twoidx].children[threeidx].children.length === 0) delete cpData[oneidx].children[twoidx].children[threeidx];
+                    })
+                    cpData[oneidx].children[twoidx].children = cpData[oneidx].children[twoidx].children.filter(d => d !== undefined && d !== null);
+                    if (cpData[oneidx].children[twoidx].children.length === 0) delete cpData[oneidx].children[twoidx];
+                }
+                if (['조류'].includes(two.label)){
+                    two.children.map((region, ridx) => {
+                        region.children.map((varname, vidx) => {
+                            if (!varname.label.includes(search))
+                                delete cpData[oneidx].children[twoidx].children[ridx].children[vidx];
+                        })
+                        cpData[oneidx].children[twoidx].children[ridx].children = cpData[oneidx].children[twoidx].children[ridx].children.filter(d => d !== undefined && d !== null);
+                        if (cpData[oneidx].children[twoidx].children[ridx].children.length === 0) delete cpData[oneidx].children[twoidx].children[ridx];
+                    })
+                    cpData[oneidx].children[twoidx].children = cpData[oneidx].children[twoidx].children.filter(d => d !== undefined && d !== null);
+                    if (cpData[oneidx].children[twoidx].children.length === 0) delete cpData[oneidx].children[twoidx];
+                }
             })
             cpData[oneidx].children = cpData[oneidx].children.filter(d => d !== undefined && d !== null);
             if (cpData[oneidx].children.length === 0) delete cpData[oneidx];
@@ -574,7 +645,6 @@ client.connect(err => {
         console.log('Success DB connect')
     }
 });
-
 
 const oracledb = require('oracledb');
 
@@ -3481,7 +3551,6 @@ app.get('/api/tree/com_code', async (req, res) => {
                 for (const emptyNode of swmn_emptyNodes) {
                     const att_list = [];
                     const att_swmn_nm = ["수온(℃)", "pH", "DO(㎎/L)", "투명도", "탁도", "Chl-a(㎎/㎥)", "유해남조류 세포수(cells/㎖)", "Microcystis", "Anabaena", "Oscillatoria", "Aphanizomenon", "지오스민(ng/L)", "2MIB(ng/L)", "Microcystin-LR(μg/L)"]
-                    // const att_swmn_nm = ["수온", "pH", "DO", "투명도", "탁도", "Chl-a", "유해남조류 세포수", "Microcystis", "Anabaena", "Oscillatoria", "Aphanizomenon", "지오스민", "2MIB", "Microcystin-LR"]
                     const att_swmn_code = ["ITEM_TEMP_SURF", "ITEM_PH_SURF", "ITEM_DOC_SURF", "ITEM_TRANSPARENCY", "ITEM_TURBIDITY", "ITEM_SUF_CLOA", "ITEM_BLUE_GREEN_ALGAE", "ITEM_BGA_MICROCYSTIS", "ITEM_BGA_ANABAENA", "ITEM_BGA_OSILLATORIA", "ITEM_BGA_APHANIZOMENON", "ITEM_GEOSMIN", "ITEM_2MIB", "ITEM_MICROCYSTIN"]
                     for (let i = 0; i < att_swmn_nm.length; i++) {
                         const att_node = {
@@ -3522,6 +3591,7 @@ app.get('/api/tree/com_code', async (req, res) => {
     }
 });
 
+// Data에서 지역명/변수명 검색
 app.post('/api/search', (req, res) => { // 데이터 검색
     const data = req.body;
     const select = data.select;
@@ -3694,6 +3764,7 @@ app.post('/api/dataframe/info', (req, res) => { // Data info return
 
 app.post('/api/python/preprocessing/one', (req, res) => {
     const data = req.body;
+    console.log(data)
     const passdata = processEncode(data);
     const func = data.request[0].split('-')[0];
     const method = data.request[0].split('-')[1];
@@ -3725,7 +3796,7 @@ app.post('/api/python/preprocessing/one', (req, res) => {
         let errorcheck = false;
 
         // 예외처리
-        if (func === 'InterpolUnivar' && (method === 'nearest' || method === 'quadratic' || method === 'cubic')) {
+        if (func === 'InterpolUnivar' && (method === 'nearest' || method === 'quadratic' || method === 'cubic' || method === 'time' || method === 'slinear' || method === "piecewise_polynomial" || method === 'pchip' || method === 'akima' || method === 'cubicspline' || method === 'polynomial' || method === 'spline')) {
 
             switch (method) {
                 case 'nearest':
@@ -3734,6 +3805,86 @@ app.post('/api/python/preprocessing/one', (req, res) => {
                         if (useD.length <= 1) {
                             errorcheck = true;
                             res.json({ error: `error: nearest 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'time':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error: time 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'slinear':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error: slinear 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'piecewise_polynomial':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error: piecewise_polynomial 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'pchip':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error:  pchip 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'akima':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error:  akima 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'cubicspline':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error:  cubicspline 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'spline':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error:  spline 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
+                            break;
+                        }
+                    }
+                    break;
+                case 'polynomial':
+                    for (let vidx = 0; vidx < vals.length; vidx++) {
+                        let useD = data.data.map(d => d[vals[vidx]]).filter(d => d !== null && d !== undefined);
+                        if (useD.length <= 1) {
+                            errorcheck = true;
+                            res.json({ error: `error:  polynomial 보간법은 2개 이상의 데이터가 필요합니다. 데이터가 1개 이하인 변수가 존재합니다.[${vals[vidx]}]` });
                             break;
                         }
                     }
@@ -4121,6 +4272,7 @@ app.post('/api/python/yresult',(req,res)=>{
 
 app.post('/api/python/forecast',(req,res)=>{
     const data = req.body;
+    console.log(data)
     const user = data.user;
     const models = data.models.map(m=>m.model);
     const creaters = data.models.map(m=>m.creator);
