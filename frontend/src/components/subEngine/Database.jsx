@@ -46,12 +46,10 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 
 export default function Database() {
     const { region, changeVal } = useContext(StateContext);
-
     const [dbData, setdbData] = useState([]);
     const [defaultData, setdefaultData] = useState([]);
     const [dbSelectData, setdbSelectData] = useState([]);
     const [defaultSelectData, setdefaultSelectData] = useState([]);
-
 
     // Map Mark
     const [mark, setMark] = useState([]);
@@ -212,6 +210,25 @@ export default function Database() {
             return list;
         }
         const select_tree = filterDataByKeys(tmpdb, ShowSelected)
+        const final_result = [];
+
+        function extractNodeInfo(node, parentValues = []) {
+        const currentNodeValues = [...parentValues, node.label.props.children[0], node.value];
+
+        if (node.children && node.children.length > 0) {
+            for (const child of node.children) {
+            extractNodeInfo(child, currentNodeValues);
+            }
+        } else {
+            final_result.push(currentNodeValues);
+        }
+        }
+
+        for (const node of select_tree) {
+            extractNodeInfo(node);
+        }
+
+        changeVal(final_result)
         setdbSelectData(select_tree);
     },[ShowSelected])
 
@@ -311,23 +328,6 @@ export default function Database() {
 
     };
 
-    // const filterTree = (node, checkedNodes, ancestors = []) => {
-    //     if (node.children) {
-    //         const filteredChildren = node.children
-    //             .map(child => filterTree(child, checkedNodes, [...ancestors, node]))
-    //             .filter(child => !!child);
-
-    //         // Check if any descendant is checked or if the node itself is checked
-    //         if (filteredChildren.length > 0 || checkedNodes.includes(node.value) || ancestors.some(ancestor => checkedNodes.includes(ancestor.value))) {
-    //             return { ...node, label: getModifiedLabel(node), children: filteredChildren };
-    //         }
-    //     } else {
-    //         if (checkedNodes.includes(node.value) || ancestors.some(ancestor => checkedNodes.includes(ancestor.value))) {
-    //             return { ...node, label: getModifiedLabel(node) };
-    //         }
-    //     }
-    // };
-
     const handleShowselected = (selected) => {
         function getParentKeysWithValue(list, targetValues, parents = []) {
             const result = [];
@@ -351,29 +351,6 @@ export default function Database() {
         return uniqueList;
     }
 
-    const handleShowselectedForProc = (selected) => {
-        function getParentKeysWithValue(list, targetValues, parents = []) {
-            const result = [];
-          
-            for (const item of list) {
-              if (targetValues.includes(item.value)) {
-                result.push([...parents, item.label,item.value]);
-              }
-          
-              if (item.children && item.children.length > 0) {
-                const subResults = getParentKeysWithValue(item.children, targetValues, [...parents, item.label, item.value]);
-                result.push(...subResults);
-              }
-            }
-          
-            return result;
-        }
-        const ParentList = getParentKeysWithValue(dbData, selected)
-        return ParentList;
-    }
-
-    
-
     const handleRemoveBtn = (value) => {
         let tmplist = ShowSelected.filter(data => data !== value);
         setShowSelected(tmplist);
@@ -386,12 +363,7 @@ export default function Database() {
     // Select btn click handle
     const handleSelectBtn = () => {
         const tmpselect = [...new Set(ShowSelected.concat(handleShowselected(selected)))]
-        const tmpprocselect = handleShowselectedForProc(selected)
         setShowSelected(tmpselect);
-        changeVal(tmpprocselect)
-        // changeVal(tmpselect, 0);
-        // changeVal(select,0);
-        // changeVal(tmpselect,0);
         setSelected([]);
     }
 
