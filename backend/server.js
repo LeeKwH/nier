@@ -470,7 +470,7 @@ const SeachData = (data, select, search) => { // frontend의 Database 화면, �
     let cpData = [...data];
     if (select === "지역명") {
         data.map((one, oneidx) => {
-            one.children.map((two, twoidx) => {
+            one.children.map((two, twoidx) => { // 데이터 종류별로 다르게
                 console.log('twoidx:', twoidx);
                 if (['수질'].includes(two.label)){
                     two.children.map((three, threeidx) => {
