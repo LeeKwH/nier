@@ -3,3 +3,7 @@
 ### Files ###
 *.csv
 *.json
+*.pyc
+*.txt
+*.0
+*.pth
