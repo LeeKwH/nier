@@ -82,6 +82,7 @@ export default function Database() {
 
     // search Data
     const [searchData, setSearchData] = useState('');
+    const [searchTextFieldActive, setSearchTextFieldActive] = useState(false); // 검색명 Textfield에 커서가 작동중인지 아닌지 True, False
     const [searchSelect, setSearchSelect] = useState('지역명');
     const [map, setMap] = useState();
 
@@ -377,8 +378,28 @@ export default function Database() {
         // changeVal([], 1);
     }
 
+    // Enter 키를 누를 때 검색 실행
+    const handleEnterKey = (event) => {
+        if (searchTextFieldActive && event.key === 'Enter') {
+            console.log('Enter키 누름) searchData:',searchData)
+            console.log('handleSearchBtn() 발동!')
+            handleSearchBtn();
+        }
+    };
+
+    useEffect(() => {
+        // 이벤트 리스너 등록
+        document.addEventListener('keydown', handleEnterKey);
+
+        // 컴포넌트 언마운트 시 이벤트 리스너 해제
+        return () => {
+            document.removeEventListener('keydown', handleEnterKey);
+        };
+    }, []); // 빈 배열을 전달하여 컴포넌트가 마운트될 때 한 번만 실행
+
     // Search btn handle
     const handleSearchBtn = () => {
+        console.log('handleSearchBtn) searchData:',searchData)
         if (searchData === "") {
             alert("검색어를 입력해주세요.");
         } else {
@@ -502,9 +523,12 @@ export default function Database() {
                             </FormControl>
                             {/* </Tooltip> */}
                             {/* <TextField sx={{marginX:'0.2rem'}} size="small" label="Search" onChange={e=>setSearchData(e.target.value)}></TextField> */}
-                            <TextField sx={{ marginX: '0.2rem', flex: 1 }} size="small" label="Search" onChange={e => setSearchData(e.target.value)}></TextField>
+                            <TextField sx={{ marginX: '0.2rem', flex: 1 }} size="small" label="Search" value={searchData} onChange={e => setSearchData(e.target.value)} onKeyDown={handleEnterKey}
+                                onFocus={() => setSearchTextFieldActive(true)} // TextField가 활성화될 때
+                                onBlur={() => setSearchTextFieldActive(false)} // TextField가 비활성화될 때
+                            />
                             <Button sx={{ marginX: '0.2rem' }} variant="contained" onClick={handleSearchBtn}>검색</Button>
-                            <Button sx={{ marginX: '0.2rem' }} variant="outlined" onClick={() => { setdbData(defaultData) }}>초기화</Button>
+                            <Button sx={{ marginX: '0.2rem' }} variant="outlined" onClick={() => {setSearchData('')}}>초기화</Button>
                         </Paper>
                         <div style={{ display: 'flex' }}>
                             <Card className="select-var-card">
