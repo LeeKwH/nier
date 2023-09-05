@@ -64,7 +64,7 @@ def get_data():
         '방류량': 'DCWTR_QY',
         '저수량': 'CMNUSE_QY',
         # 유량
-        '유량': 'FLUX',
+        '유량_유량': 'FLUX',
         # 조류
         '조류_수온': 'ITEM_TEMP_SURF',
         'pH': 'ITEM_PH_SURF',
