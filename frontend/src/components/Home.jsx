@@ -215,7 +215,7 @@ export default function Home(){
                             {/* <div style={{flex:0.8}}> */}
                                 {barData.region.length>0&&barData.var.length>0?<Bar
                                     data={{
-                                        labels:['금강','낙동강','영산강','한강'],
+                                        labels:['한강','금강','낙동강','영산강'],
                                         datasets:[
                                             {
                                                 label:'지역 수(Left)',

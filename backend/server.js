@@ -649,56 +649,76 @@ const oracledb = require('oracledb');
 
 // API 작성 --> 각 기능을 frontend에서 호출하여 사용
 
-app.get('/api/list/alldata', (req, res) => {
+app.get('/api/list/alldata', async(req, res) => {
 
     /* 수계별 데이터 정보 return*/
+    code_list = ['R01', 'R02', 'R03', 'R04']
+    const connection = await oracledb.getConnection(dbConfig);
+    
+    const passResult = {};
 
-    client.query("select tablename from PG_TABLES WHERE tablename like 'info__%'", (err, rows) => { // DB info__ 로 시작하는 Table 데이터 정보 get
-        if (err) {
-            res.json({ error: err });
-        } else {
-            const data = rows.rows.map(r => r.tablename);
-            const result = maketreeQuery(data);
-            const regions = Object.keys(result);
-            const myresult = {};
-            regions.map(r => {
-                client.query(result[r], (err, rows) => {
-                    if (err) {
-                        res.json({ error: err });
-                    } else {
-                        if (rows.length) {
-                            const tmprows = rows.map(row => row.rows);
-                            const pushrows = tmprows.reduce((acc, cur) => acc.concat(cur));
-                            myresult[r] = pushrows;
-                        }
-                        else myresult[r] = rows.rows;
-                        if (Object.keys(myresult).length === regions.length) {
-                            // res.json(myresult);
-                            // res.json(myresult['낙동강__수질_주간']);                  
-                            // res.json(Object.keys(myresult));   
+    let sql = ''
+    let sql2 = ''
+    let region = ''
+    for (var i=0 ; i < code_list.length ; i++){
+        sql = `
+        SELECT
+            (SELECT COUNT(*) FROM WATER.V_WRSSM_SEARCH WHERE LV=4 AND PATH2 LIKE '${code_list[i]}%') + 
+            (SELECT COUNT(*) FROM WATER.V_FLU_DAM_${code_list[i]}_SEARCH) + 
+            (SELECT COUNT(*) FROM WATER.V_FLU_FLUX_${code_list[i]}_SEARCH) +
+            (SELECT COUNT(*) FROM WATER.V_FLU_GDWETHER_${code_list[i]}_SEARCH) + 
+            (SELECT COUNT(*) FROM WATER.V_FLU_WLV_${code_list[i]}_SEARCH) + 
+            (SELECT COUNT(*) FROM WATER.V_MSR_SWMN_${code_list[i]}_SEARCH) AS total_row_count
+        FROM dual
+        `
+        const result = await connection.execute(sql);
 
-                            const passResult = {};
-                            const keys = Object.keys(myresult);
-                            keys.map(k => {
-                                const target = k.includes('금강') ? '금강' : k.includes('한강') ? '한강' : k.includes('낙동강') ? '낙동강' : '영산강';
-                                if (!passResult.hasOwnProperty(target)) passResult[target] = { 'regionNum': 0, 'valueNum': 0 }; // 수계별 지역 수, 변수 수 저장
-                                const subKeys = Object.keys(myresult[k][0]);
-                                passResult[target]['regionNum'] += subKeys.length;
-                                let tmplen = 0;
-                                subKeys.map(sk => {
-                                    let lens = myresult[k].filter(d => d[sk] !== null || d[sk] !== undefined || !d[sk].includes("NaN") || !d[sk].includes('NULL')).length;
-                                    tmplen += lens;
-                                })
-                                passResult[target]['valueNum'] += tmplen;
-                            });
-                            res.json(passResult);
-                        }
-                    }
-                })
-            })
-            // res.json(myresult);
+        if (code_list[i]=='R01'){
+            region = '한강'
+        } else if (code_list[i]=='R02') {
+            region = '금강'
+        } else if (code_list[i]=='R03') {
+            region = '낙동강'
+        } else if (code_list[i]=='R04') {
+            region = '영산강'
         }
-    })
+        passResult[region]  = { 'regionNum': 0, 'valueNum': 0 }
+        passResult[region]['regionNum'] = result.rows[0][0]
+
+        sql2 = `
+        SELECT
+        (SELECT COUNT(*)
+        FROM V_MSR_WQMN_DAY
+        WHERE WQMN_NM IN (SELECT CODE_NM
+                              FROM V_WRSSM_SEARCH
+                              WHERE PATH2 LIKE '${code_list[i]}%'
+                              )) + 
+        (SELECT COUNT(*)
+        FROM V_FLU_DAM_DAY
+        WHERE OBSRVT_CODE IN (SELECT OBSRVT_CODE
+                              FROM V_FLU_DAM_${code_list[i]}_SEARCH)) + 
+        (SELECT COUNT(*)
+        FROM V_FLU_FLUX_DAY
+        WHERE OBSRVT_CODE IN (SELECT OBSRVT_CODE
+                              FROM V_FLU_FLUX_${code_list[i]}_SEARCH)) + 
+        (SELECT COUNT(*)
+        FROM V_FLU_WLV_DAY
+        WHERE OBSRVT_CODE IN (SELECT OBSRVT_CODE
+                              FROM V_FLU_GDWETHER_${code_list[i]}_SEARCH)) + 
+        (SELECT COUNT(*)
+        FROM V_FLU_WLV_DAY
+        WHERE OBSRVT_CODE IN (SELECT OBSRVT_CODE
+                              FROM V_FLU_WLV_${code_list[i]}_SEARCH)) + 
+        (SELECT COUNT(*)
+        FROM V_MSR_SWMN_DAY
+        WHERE SWMN_CODE IN (SELECT SWMN_CODE
+                            FROM V_MSR_SWMN_${code_list[i]}_SEARCH)) AS total_row_count
+        FROM dual
+        `
+        const result2 = await connection.execute(sql2);
+        passResult[region]['valueNum'] = result2.rows[0][0]
+    }
+    res.json(passResult);
 })
 
 app.get('/api/tree/com_code', async (req, res) => {
