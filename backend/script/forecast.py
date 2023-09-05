@@ -77,9 +77,11 @@ use_var =[]
 for var in variables:
     category, site, item = var.split('-') #지금 psql조회는 지점명(파일명)으로 하기때문에 중복지점명 있을경우 오류발생
     use_var.append(category+'_'+site+'_'+item)
-    if category == '조류':
-        if item in ['수온', 'DO', '투명도']:
-            item = f'조류_{item}'
+    if item in ['수온', 'DO', '투명도']:
+        if category == '조류': item = f'조류_{item}'
+    if item in ['유량']:
+        if category == '유량': item = f'유량_{item}'
+
     vals = attr_data[item]
     if category=='수질':
         table = 'V_MSR_WQMN_DAY'
@@ -132,7 +134,7 @@ for var in variables:
     current_db = connection
     var_df = pd.read_sql_query(sql, connection)
     var_df.rename(columns={'D':'date'}, inplace = True)
-    item = item.replace('조류_', '')
+    item = item.replace('조류_', '').replace('유량_', '')
     var_df.columns = ['date'] + [category+'_'+site +'_'+item]
     var_df[var_df.columns[0]] = pd.DatetimeIndex(var_df[var_df.columns[0]])
     var_df = var_df.set_index(var_df[var_df.columns[0]])

@@ -249,7 +249,7 @@ const dataframes = (data) => {
 /**
  * make dataframeinfo
  * @param {Object} data from dataframe
- * @param {list} allvars all variables name 
+ * @param {list} allvars all variables name
  * @example
  * data example follow 
  * [
@@ -444,7 +444,7 @@ const forecastData = (data) => {
                 pointRadius: 0.2,
             },
             {
-                label:`${v}_y`,
+                label:`${model}_${tmpvar}_y`,
                 data:Object.values(d.data['forecast_y'][v]),
                 type: 'line',
                 borderColor: 'rgb(0, 0, 0)',
@@ -471,7 +471,6 @@ const SeachData = (data, select, search) => { // frontend의 Database 화면, �
     if (select === "지역명") {
         data.map((one, oneidx) => {
             one.children.map((two, twoidx) => { // 데이터 종류별로 다르게
-                console.log('twoidx:', twoidx);
                 if (['수질'].includes(two.label)){
                     two.children.map((three, threeidx) => {
                         three.children.map((four, fouridx) => {
@@ -4028,6 +4027,7 @@ app.post('/api/datasave/:name/:isf', (req, res) => { // Dataset 저장 api
 
 })
 
+
 app.get('/api/region/:regions', (req, res) => { // frontend Data>Database 지도 내 위치 표출 위한 위경도 데이터
     const regionId = decodeURI(req.params.regions).split('__');
     const data = regionId.at(2);
@@ -4262,6 +4262,7 @@ app.post('/api/python/yresult',(req,res)=>{
                             d = d.replaceAll('Infinity','999999');
                             d = JSON.parse(d);
                             const passdatas = PassYresult(d);
+                            console.log(passdatas);
                             res.json(passdatas)
                         }
                     })
@@ -4281,6 +4282,7 @@ app.post('/api/python/forecast',(req,res)=>{
     const end = data.end;
     let results = [];
     models.map((model,idx)=>{
+
         let options = {
             pythonPath: pythonpath,
             scriptPath: `./script/`,
@@ -4290,6 +4292,7 @@ app.post('/api/python/forecast',(req,res)=>{
         }
 
         var pyshell = new PythonShell('forecast.py', options);
+        
         pyshell.on('message', function (message) {
             // received a message sent from the Python script (a simple "print" statement)
             message = message.replaceAll('None','null');
@@ -4298,7 +4301,6 @@ app.post('/api/python/forecast',(req,res)=>{
             message = message.replaceAll('infinity','999999');
             // console.log(message);
             const d = JSON.parse(message);
-            console.log('3967 d', d)
             if(Object.values(d).length===0) res.json({error:'no data'})
             else{
                 results.push({model:model, data:d});
@@ -4308,6 +4310,7 @@ app.post('/api/python/forecast',(req,res)=>{
                 }
             }
         });
+
         pyshell.end(function (err) {
             if (err){
                 console.log(err);
